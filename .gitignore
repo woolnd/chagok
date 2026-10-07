@@ -1,0 +1,15 @@
+# 데이터 (노트, Chroma, 큐 등)
+data/
+
+# 환경 변수
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Claude Code 개인 설정, Ralph 루프 상태 파일
+.claude/*.local.*
+
+.DS_Store

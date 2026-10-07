@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(/.env)",
+      "Read(/.env.*)",
+      "Edit(/eval/**)",
+      "Edit(/data/notes/**)",
+      "Edit(/docs/DESIGN.md)",
+      "Edit(/docs/QA_CRITERIA.md)"
+    ]
+  },
+  "enabledPlugins": {
+    "ralph-loop@anthropic-plugin-directory": true,
+    "harness@harness-marketplace": true
+  }
+}
