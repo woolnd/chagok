@@ -9,7 +9,7 @@ data/
 __pycache__/
 *.pyc
 
-# Claude Code 개인 설정
-.claude/settings.local.json
+# Claude Code 개인 설정, Ralph 루프 상태 파일
+.claude/*.local.*
 
 .DS_Store

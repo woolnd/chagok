@@ -10,20 +10,27 @@
 - 답 제출, 채점, 오답 관리는 하지 않는다.
 - 개발은 사람이 직접 한다. RAG 검색과 평가가 중심이다.
 
+## 역할
+
+- **사람**: 코드를 직접 짠다. 평가셋·품질 기준·목표치를 정한다. 실험 결과의 채택을 결정한다.
+- **Claude**: 사람이 요청한 범위만 돕는다. 요청 없이 기능을 만들거나 넓히지 않는다.
+- **QA 에이전트** (`.claude/agents/qa.md`): 코드·실험을 `docs/QA_CRITERIA.md` 기준으로 판정만 한다.
+- **실험 에이전트**: Phase 2에 harness로 추가한다.
+
 ## 절대 원칙
 
 1. 평가셋을 먼저 만들고, 한 번에 하나만 바꾼다.
 2. 켰을 때와 껐을 때를 수치로 비교하지 않은 모듈은 넣지 않는다. 돈이 드는 선택은 선택지 2개 이상을 비교한다.
 3. 검색이 쓸 만해지기 전에 출제를 만들지 않는다. 결과가 이상하면 검색 결과부터 본다.
 4. 노트에 없는 내용은 출제하지 않고, AI 생성 내용과 섞지 않는다.
-5. 평가셋, 품질 기준, 목표치는 사람만 고친다. `eval/`, `docs/DESIGN.md`, `docs/QA_CRITERIA.md`는 hook으로 수정이 막혀 있다. 우회하지 말고 사람에게 요청한다.
+5. 평가셋, 품질 기준, 목표치는 사람만 고친다. `eval/`, `data/notes/`, `docs/DESIGN.md`, `docs/QA_CRITERIA.md` 수정과 `.env` 읽기는 `.claude/settings.json`의 deny 규칙으로 막혀 있다. 우회하지 말고(스크립트로 쓰기 포함) 사람에게 요청한다.
 
 ## 문서
 
 | 파일 | 내용 | 수정 |
 | --- | --- | --- |
 | `docs/DESIGN.md` | 목표치, 제약, 문제 품질 기준, 운영 수치 | 사람만 |
-| `docs/QA_CRITERIA.md` | 실험 QA 판정 기준 | 사람만 |
+| `docs/QA_CRITERIA.md` | 코드·실험 QA 판정 기준 | 사람만 |
 | `docs/DECISIONS.md` | 실험 결과와 채택 결정 기록 | 누구나 |
 | `docs/STATUS.md` | Phase·실험 진행 상황 | 누구나 |
 
@@ -34,7 +41,8 @@
 - `topic`, `keywords`는 색인할 때 자동 추출해 따로 저장한다. **노트 파일은 수정하지 않는다.**
 - `> 메모:` 줄에 나온 개념을 출제 우선순위에 반영한다.
 - 청킹 시 코드 블록 안의 `#`은 제목으로 보지 않는다. 코드 블록 안의 긴 실행 결과는 정제 단계에서 줄인다.
-- 데이터는 `data/` 한 곳에 둔다 (노트 포함, git 제외). API 키는 환경 변수로.
+- 데이터는 `data/` 한 곳에 둔다 (노트는 `data/notes/`, git 제외). API 키는 환경 변수로.
+- 코드는 `src/`, 테스트는 `tests/`, 평가셋은 `eval/`.
 
 ## 아키텍처
 
@@ -82,9 +90,14 @@
 - 모든 모듈은 켰을 때 / 껐을 때를 품질·속도·비용으로 비교한 뒤 채택한다. 지표와 목표치는 `docs/DESIGN.md`.
 - 5%p 미만 차이는 개선으로 보지 않는다. 질문 유형별로 나눠 본다. 노트 50개 이상 쌓인 뒤 실험한다.
 - 결과는 `docs/DECISIONS.md`에 기록: 문제 / 선택지 / 결과(품질·속도·비용) / 결정과 버린 이유.
-- 실험 자동화는 Phase 2~3에만 쓴다. 실험은 Claude Code가 실행하고 **채택은 사람이 결정한다.**
-- 팀 구성: 실험 에이전트(experimenter) + QA 에이전트(qa) 두 개만. QA는 판정만 한다 (`disallowedTools: Write, Edit`).
-- 루프(Ralph Wiggum)는 `--max-iterations`를 항상 설정. 완료는 QA 통과 + 목표 달성 시에만 선언.
+
+## 하네스와 루프
+
+- 플러그인: `harness`(revfactory/harness), `ralph-loop`(Ralph Wiggum). `.claude/settings.json`에서 프로젝트 단위로 켜져 있다.
+- **Phase 0~1**: QA 에이전트 1개. Ralph는 사람이 쓴 테스트(예: 청킹)를 통과시키는 연습으로만 쓴다.
+- **Phase 2~3**: harness로 실험 에이전트(experimenter)를 추가해 실험 + QA 두 개로 구성. 실험은 Claude Code가 실행하고 **채택은 사람이 결정한다.**
+- Ralph는 기본값이 무한 반복이다. 항상 `--max-iterations 5`로 실행한다 (예: `/ralph-loop "청킹 테스트 통과" --max-iterations 5 --completion-promise "DONE"`). 완료는 QA 통과 + 목표 달성 시에만 선언한다.
+- deny 규칙은 Claude의 파일 도구와 Bash 파일 명령에만 적용된다. 스크립트가 직접 파일을 여는 경우까지 막으려면 샌드박스를 켠다.
 
 ## 개발 순서
 
@@ -114,7 +127,7 @@ chore/*   → 환경 세팅, 설정
 ```
 
 - 작업 브랜치는 `main`에서 만들고, 끝나면 PR로 `main`에 합친다. `main`에 직접 커밋하지 않는다.
-- 이름: `feat/#11-hybrid-search`, `fix/#11-chunking-code-block`, `exp/#12-reranker-threshold`
+- 이름: `feat/#11-hybrid-search`, `fix/#11-chunking-code-block`, `exp/#12-reranker-threshold`, `chore/#1-claude-setup`
 
 ### 커밋
 
