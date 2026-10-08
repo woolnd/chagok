@@ -40,5 +40,10 @@ def check(note: dict) -> list[str]:
 
 
 if __name__ == "__main__":
-    for path in sorted(NOTES_DIR.glob("*.md")):
-        print(path.name, check(parse(path)) or "통과")
+    paths = sorted(NOTES_DIR.glob("*.md"))
+    passed = 0
+    for path in paths:
+        errors = check(parse(path))
+        passed += not errors
+        print(path.name, errors or "통과")
+    print(f"통과 {passed} / 전체 {len(paths)}")
