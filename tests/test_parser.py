@@ -33,6 +33,25 @@ def test_hash_in_code_block_is_not_heading(tmp_path):
     assert note["sections"] == []
 
 
+def test_section_text_stops_at_next_heading(tmp_path):
+    body = "# 제목\n## A\n가\n\n```python\n# 주석\n```\n### B\n나\n## C\n다\n"
+    texts = [s["text"] for s in parse(write_note(tmp_path, body))["sections"]]
+    assert texts == ["가\n\n```python\n# 주석\n```", "나", "다"]
+
+
+def test_section_text_empty_when_heading_follows(tmp_path):
+    body = "# 제목\n## A\n### B\n나\n"
+    texts = [s["text"] for s in parse(write_note(tmp_path, body))["sections"]]
+    assert texts == ["", "나"]
+
+
+def test_section_text_keeps_markdown(tmp_path):
+    body = "# 제목\n## A\n- 항목\n> 메모: 필기\n"
+    assert parse(write_note(tmp_path, body))["sections"][0]["text"] == (
+        "- 항목\n> 메모: 필기"
+    )
+
+
 def test_consecutive_memos_are_split(tmp_path):
     body = "# 제목\n## 섹션\n> 메모: 첫째\n> 메모: 둘째\n"
     memos = parse(write_note(tmp_path, body))["memos"]
