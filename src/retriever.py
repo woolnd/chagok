@@ -65,3 +65,35 @@ def build_index(notes_dir: Path = NOTES_DIR) -> int:
     if stale:
         collection.delete(ids=list(stale))
     return len(ids)
+
+
+def search(query: str, k: int = 5) -> list[dict]:
+    """질문과 가까운 청크를 찾는다. 검색만 하고 생성은 하지 않는다.
+
+    Args:
+        query: 질문.
+        k: 돌려줄 청크 수.
+
+    Returns:
+        가까운 순서의 청크 리스트. 청크마다 {"file", "date", "path", "text", "distance"}.
+        date는 "YYYY-MM-DD" 문자열, distance는 cosine 거리(0에 가까울수록 비슷함).
+    """
+    # 질문은 경로 없이 그대로. 색인과 같은 모델·정규화여야 벡터끼리 비교된다
+    query_embedding = get_model().encode(query, normalize_embeddings=True)
+    result = get_collection().query(query_embeddings=[query_embedding], n_results=k)
+
+    chunks = []
+    # query는 질문 여러 개를 받으므로 결과도 질문마다 리스트다. 질문 하나라 [0]
+    for meta, text, distance in zip(
+        result["metadatas"][0], result["documents"][0], result["distances"][0]
+    ):
+        chunks.append(
+            {
+                "file": meta["file"],
+                "date": meta["date"],
+                "path": meta["path"].split(PATH_SEP),  # chunk와 같은 리스트로 되돌림
+                "text": text,
+                "distance": distance,
+            }
+        )
+    return chunks
