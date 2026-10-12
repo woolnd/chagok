@@ -23,8 +23,6 @@ def chunk(path: Path) -> list[dict]:
         # h2 바로 밑에 h3가 오면 본문이 비고, 제목은 h3 청크의 path에 이미 있다
         if not section["text"]:
             continue
-        chunks.append(
-            {"file": note["file"], "date": note["date"], **section}
-        )
+        chunks.append({"file": note["file"], "date": note["date"], **section})
 
     return chunks
