@@ -68,3 +68,11 @@ def test_search_returns_chunks_in_order(notes_dir):
     assert results[0]["date"] == "2026-07-30"
     assert results[0]["text"] == "사과 사과 사과"
     assert results[0]["distance"] < results[1]["distance"]
+
+
+def test_empty_notes_dir_clears_index(notes_dir):
+    write_note(notes_dir, "a.md", "# 과일\n## 사과\n사과\n")
+    retriever.build_index(notes_dir)
+    (notes_dir / "a.md").unlink()
+    assert retriever.build_index(notes_dir) == 0
+    assert retriever.get_collection().count() == 0

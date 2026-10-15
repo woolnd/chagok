@@ -1,6 +1,7 @@
 """노트 형식 검사. parse() 결과만 보고 판정하고, 노트 파일은 고치지 않는다."""
 
 import datetime
+from collections import Counter
 
 # src/를 스크립트 경로로 실행해야 같은 폴더의 parser를 찾는다
 from parser import NOTES_DIR, parse
@@ -35,6 +36,16 @@ def check(note: dict) -> list[str]:
     lang_count = note["code_without_lang_count"]
     if lang_count >= 1:
         errors.append(f"코드 블록 언어 표시 없음: {lang_count}개 (```python 처럼)")
+
+    # 서론과 빈 섹션은 청크가 되지 않아, 이대로면 노트가 검색에서 통째로 빠진다
+    if not any(s["text"] for s in note["sections"]):
+        errors.append("내용 있는 ##·### 섹션 없음 (검색에 안 잡힘)")
+
+    # 청크 id가 "파일#제목 경로"라 경로가 겹치면 색인이 멈춘다
+    paths = Counter(" > ".join(s["path"]) for s in note["sections"])
+    duplicates = [p for p, n in paths.items() if n >= 2]
+    if duplicates:
+        errors.append(f"같은 제목 경로 중복: {', '.join(duplicates)}")
 
     return errors
 
