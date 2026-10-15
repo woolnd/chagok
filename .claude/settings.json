@@ -4,7 +4,6 @@
       "Read(/.env)",
       "Read(/.env.*)",
       "Edit(/eval/**)",
-      "Edit(/data/notes/**)",
       "Edit(/docs/DESIGN.md)",
       "Edit(/docs/QA_CRITERIA.md)"
     ]

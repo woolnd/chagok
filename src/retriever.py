@@ -40,26 +40,24 @@ def build_index(notes_dir: Path = NOTES_DIR) -> int:
         색인한 청크 수.
     """
     chunks = [c for path in sorted(notes_dir.glob("*.md")) for c in chunk(path)]
-    # 제목 경로를 붙여야 "패딩"이 CNN 것인지 NLP 것인지 구분된다. 저장은 원문만
-    texts = [PATH_SEP.join(c["path"]) + "\n" + c["text"] for c in chunks]
-    # 길이를 1로 맞춰 cosine 유사도로 비교한다
-    embeddings = get_model().encode(texts, normalize_embeddings=True)
-
     # 순번 id는 노트가 추가되면 밀려서 엉뚱한 청크를 덮어쓴다
     ids = [c["file"] + "#" + PATH_SEP.join(c["path"]) for c in chunks]
-    # Chroma 메타데이터는 리스트·date를 받지 않아 문자열로 바꾼다
-    metadatas = [
-        {"file": c["file"], "date": str(c["date"]), "path": PATH_SEP.join(c["path"])}
-        for c in chunks
-    ]
 
     collection = get_collection()
-    collection.upsert(
-        ids=ids,
-        embeddings=embeddings,
-        documents=[c["text"] for c in chunks],
-        metadatas=metadatas,
-    )
+    if chunks:  # 빈 리스트는 upsert가 거부한다. 노트가 없어도 아래 삭제는 해야 한다
+        # 제목 경로를 붙여야 "패딩"이 CNN 것인지 NLP 것인지 구분된다. 저장은 원문만
+        texts = [PATH_SEP.join(c["path"]) + "\n" + c["text"] for c in chunks]
+        collection.upsert(
+            ids=ids,
+            # 길이를 1로 맞춰 cosine 유사도로 비교한다
+            embeddings=get_model().encode(texts, normalize_embeddings=True),
+            documents=[c["text"] for c in chunks],
+            # Chroma 메타데이터는 리스트·date를 받지 않아 문자열로 바꾼다
+            metadatas=[
+                {"file": c["file"], "date": str(c["date"]), "path": PATH_SEP.join(c["path"])}
+                for c in chunks
+            ],
+        )
     # upsert는 지운 섹션을 남겨 두므로, 이번 색인에 없는 id는 지운다
     stale = set(collection.get(include=[])["ids"]) - set(ids)
     if stale:

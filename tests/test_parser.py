@@ -46,29 +46,10 @@ def test_section_text_empty_when_heading_follows(tmp_path):
 
 
 def test_section_text_keeps_markdown(tmp_path):
-    body = "# 제목\n## A\n- 항목\n> 메모: 필기\n"
+    body = "# 제목\n## A\n- 항목\n> 인용\n"
     assert parse(write_note(tmp_path, body))["sections"][0]["text"] == (
-        "- 항목\n> 메모: 필기"
+        "- 항목\n> 인용"
     )
-
-
-def test_consecutive_memos_are_split(tmp_path):
-    body = "# 제목\n## 섹션\n> 메모: 첫째\n> 메모: 둘째\n"
-    memos = parse(write_note(tmp_path, body))["memos"]
-    assert memos == [
-        {"path": ["제목", "섹션"], "text": "첫째"},
-        {"path": ["제목", "섹션"], "text": "둘째"},
-    ]
-
-
-def test_memo_word_outside_quote_is_ignored(tmp_path):
-    body = "# 제목\n메모: 인용 밖\n\n메모리가 낭비된다\n\n> 그냥 인용\n"
-    assert parse(write_note(tmp_path, body))["memos"] == []
-
-
-def test_memo_before_any_heading(tmp_path):
-    memos = parse(write_note(tmp_path, "> 메모: 맨 위\n\n# 제목\n"))["memos"]
-    assert memos == [{"path": [], "text": "맨 위"}]
 
 
 def test_code_without_lang_count(tmp_path):
@@ -90,24 +71,39 @@ def test_check_date(tmp_path):
         "date: 2026-10-08 10:00:00": "date 형식 오류",
     }
     for front, expected in cases.items():
-        errors = check(parse(write_note(tmp_path, "# 제목\n", front)))
+        errors = check(parse(write_note(tmp_path, "# 제목\n## A\n가\n", front)))
         assert len(errors) == 1 and errors[0].startswith(expected), front
 
 
 def test_check_headings(tmp_path):
-    assert check(parse(write_note(tmp_path, "## 섹션\n"))) == [
+    assert check(parse(write_note(tmp_path, "## 섹션\n가\n"))) == [
         "# 제목 개수 오류: 0개 (1개여야 함)"
     ]
-    assert check(parse(write_note(tmp_path, "# 하나\n# 둘\n"))) == [
+    assert check(parse(write_note(tmp_path, "# 하나\n# 둘\n## A\n가\n"))) == [
         "# 제목 개수 오류: 2개 (1개여야 함)"
     ]
-    assert check(parse(write_note(tmp_path, "# 제목\n#### 깊음\n##### 더\n"))) == [
+    assert check(parse(write_note(tmp_path, "# 제목\n## A\n가\n#### 깊음\n##### 더\n"))) == [
         "#### 이하 제목 사용: 2개 (###까지만)"
     ]
 
 
 def test_check_code_lang(tmp_path):
-    body = "# 제목\n```\na\n```\n```\nb\n```\n"
+    body = "# 제목\n## A\n```\na\n```\n```\nb\n```\n"
     assert check(parse(write_note(tmp_path, body))) == [
         "코드 블록 언어 표시 없음: 2개 (```python 처럼)"
+    ]
+
+
+def test_check_no_content_section(tmp_path):
+    # ## 없이 불릿만 쓴 짧은 노트는 청크가 0개라 검색에서 빠진다
+    body = "# 활성화 함수\n- 시그모이드\n- ReLU\n"
+    assert check(parse(write_note(tmp_path, body))) == [
+        "내용 있는 ##·### 섹션 없음 (검색에 안 잡힘)"
+    ]
+
+
+def test_check_duplicate_path(tmp_path):
+    body = "# 노트\n## 예시\n가\n## 예시\n나\n"
+    assert check(parse(write_note(tmp_path, body))) == [
+        "같은 제목 경로 중복: 노트 > 예시"
     ]
