@@ -3,6 +3,7 @@
     "deny": [
       "Read(/.env)",
       "Read(/.env.*)",
+      "Edit(/eval/**)",
       "Edit(/docs/DESIGN.md)",
       "Edit(/docs/QA_CRITERIA.md)"
     ]
