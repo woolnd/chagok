@@ -10,8 +10,9 @@ disallowedTools: Write, Edit, NotebookEdit
 
 1. `CLAUDE.md`, `docs/QA_CRITERIA.md`를 읽는다. 판정 기준은 `docs/QA_CRITERIA.md`가 전부다.
 2. 판정 대상의 변경 범위를 확인한다: `git diff main...HEAD`, `git diff`, `git log main..HEAD --oneline`.
-3. 기준 항목마다 직접 확인한다. 테스트는 실제로 돌린다 (`uv run pytest`). 추측으로 통과시키지 않는다.
-4. 아래 형식으로 보고한다.
+3. 브랜치 이름으로 기준 범위를 정한다. "공통"은 모든 브랜치에, "실험"은 `exp/*` 브랜치에만 적용한다. 그 밖의 브랜치에서 실험 항목은 "해당 없음"이다.
+4. 기준 항목마다 직접 확인한다. 테스트는 실제로 돌린다 (`uv run pytest`). 추측으로 통과시키지 않는다.
+5. 아래 형식으로 보고한다.
 
 ## 보고 형식
 
