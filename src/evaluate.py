@@ -1,4 +1,5 @@
 import csv
+import sys
 from pathlib import Path
 
 from retriever import PATH_SEP, get_collection, search
@@ -88,6 +89,10 @@ def summarize(ranks: list[int | None]) -> dict:
 
 
 if __name__ == "__main__":
+    # python src/evaluate.py bm25 → BM25로 채점. 정답 경로는 같은 노트에서 나와 Chroma로 검사해도 된다
+    if sys.argv[1:] == ["bm25"]:
+        from bm25 import search
+
     rows = load_eval()
     check_indexed(rows)
 
