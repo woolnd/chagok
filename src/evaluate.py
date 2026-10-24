@@ -6,6 +6,7 @@ from retriever import PATH_SEP, get_collection, search
 
 EVAL_PATH = Path("eval/retrieval.csv")  # 프로젝트 루트 기준
 K = 5
+REGRESSION_TARGET = 1.0  # 회귀 Hit@5 목표치. docs/DESIGN.md
 
 
 def load_eval(path: Path = EVAL_PATH) -> list[dict]:
@@ -90,7 +91,8 @@ def summarize(ranks: list[int | None]) -> dict:
 
 if __name__ == "__main__":
     # python src/evaluate.py bm25 → BM25로 채점. 정답 경로는 같은 노트에서 나와 Chroma로 검사해도 된다
-    if sys.argv[1:] == ["bm25"]:
+    use_bm25 = sys.argv[1:] == ["bm25"]
+    if use_bm25:
         from bm25 import search
 
     rows = load_eval()
@@ -102,8 +104,11 @@ if __name__ == "__main__":
     for row in scored:
         row["rank"] = find_rank(row)
 
+    # 회귀는 Hit@5가 떨어지지 않는지, 능력은 MRR이 오르는지 본다
     groups = {
         "전체": scored,
+        "회귀": [r for r in scored if r["set"] == "회귀"],
+        "능력": [r for r in scored if r["set"] == "능력"],
         "메인(키워드)": [r for r in scored if r["type"] == "키워드"],
         "보조": [r for r in scored if r["type"] != "키워드"],
     }
@@ -124,3 +129,8 @@ if __name__ == "__main__":
             print(f"{row['id']} [{row['type']}] {row['query']}")
             for i, chunk in enumerate(search(row["query"], K), start=1):
                 print(f"  {i}. {chunk['file']}#{PATH_SEP.join(chunk['path'])}")
+
+    # CI는 종료 코드로 판정한다. 회귀 평가셋은 임베딩 검색 기준으로 나눠서 BM25는 검사하지 않는다
+    regression = summarize([r["rank"] for r in groups["회귀"]])
+    if not use_bm25 and regression["hit5"] < REGRESSION_TARGET:
+        raise SystemExit(f"\n회귀 Hit@5 {regression['hit5']:.0%} < 목표 {REGRESSION_TARGET:.0%}")
