@@ -102,8 +102,11 @@ if __name__ == "__main__":
     for row in scored:
         row["rank"] = find_rank(row)
 
+    # 회귀는 Hit@5가 떨어지지 않는지, 능력은 MRR이 오르는지 본다
     groups = {
         "전체": scored,
+        "회귀": [r for r in scored if r["set"] == "회귀"],
+        "능력": [r for r in scored if r["set"] == "능력"],
         "메인(키워드)": [r for r in scored if r["type"] == "키워드"],
         "보조": [r for r in scored if r["type"] != "키워드"],
     }
