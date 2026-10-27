@@ -40,3 +40,9 @@ q039,층을 깊게하는 이유는 무엇인가?,문장,2026-10-22_deep_learning
 q040,지도 학습과 비지도 학습의 차이는 무엇인가?,비교,2026-10-22_deep_learning.md#딥러닝 > 3. 지도 학습;2026-10-22_deep_learning.md#딥러닝 > 4. 비지도 학습,,회귀
 q041,what is Fine-Tuning?,한영혼용,2026-10-22_deep_learning.md#딥러닝 > 2. 전이 학습,,회귀
 q042,GAN에서 생성자와 판별자는 어떤 역할을 해?,답없음,,노트에서 뺐음,능력
+q043,자연어,키워드,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 1. 자연어 처리,,회귀
+q044,토큰화,키워드,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 4. 말뭉치와 전처리 > 토큰화,,회귀
+q045,숫자 인코딩 이후 벡터화를 하는 이유는 무엇인가?,문장,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 4. 말뭉치와 전처리 > 벡터화(임베딩),,회귀
+q046,BoW와 TF-IDF 무슨 차이야?,비교,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 8. BoW와 TF-IDF > BoW;2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 8. BoW와 TF-IDF > TF-IDF,,능력
+q047,what is the problem with the Sophores,한영혼용,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 3. 시소러스 > 시소러스의 문제점,,회귀
+q048,GloVe는 단어 벡터를 어떻게 만들어?,답없음,,동시발생 행렬과 가깝지만 GloVe는 노트에 없음,능력
