@@ -5,19 +5,28 @@ from pathlib import Path
 
 from kiwipiepy import Kiwi
 from rank_bm25 import BM25Okapi
+import yaml
 
 from chunker import chunk
 from parser import NOTES_DIR
 
 # 명사·동사·형용사·영어·숫자만. 조사·어미·기호는 검색에 도움이 안 된다
 KEEP_TAGS = {"NNG", "NNP", "VV", "VA", "SL", "SN"}
+TERMS_PATH = Path("terms.yaml")
 PATH_SEP = " > "
 
 
 @cache
 def get_kiwi() -> Kiwi:
     """형태소 분석기. 처음 만들 때 느려서 한 번만 만든다."""
-    return Kiwi()
+    kiwi = Kiwi()
+    yaml_file = yaml.safe_load(TERMS_PATH.read_text(encoding="utf-8"))
+    words = yaml_file["words"]
+
+    for word in words:
+        kiwi.add_user_word(word, "NNG")
+
+    return kiwi
 
 
 def tokenize(text: str) -> list[str]:
