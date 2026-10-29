@@ -56,6 +56,39 @@ def test_removed_section_is_deleted(notes_dir):
     assert retriever.get_collection().get()["ids"] == ["a.md#과일 > 사과"]
 
 
+def count_encoded(monkeypatch):
+    """임베딩한 글을 기록하는 모델로 바꾼다. 어떤 청크를 다시 임베딩했는지 보려고."""
+    encoded = []
+    model = FakeModel()
+    real = model.encode
+
+    def encode(texts, normalize_embeddings=True):
+        encoded.extend(texts)
+        return real(texts, normalize_embeddings)
+
+    model.encode = encode
+    monkeypatch.setattr(retriever, "get_model", lambda: model)
+    return encoded
+
+
+def test_unchanged_notes_are_not_reembedded(notes_dir, monkeypatch):
+    write_note(notes_dir, "a.md", "# 과일\n## 사과\n사과\n## 포도\n포도\n")
+    retriever.build_index(notes_dir)
+    encoded = count_encoded(monkeypatch)
+    retriever.build_index(notes_dir)
+    assert encoded == []
+
+
+def test_only_changed_section_is_reembedded(notes_dir, monkeypatch):
+    write_note(notes_dir, "a.md", "# 과일\n## 사과\n사과\n## 포도\n포도\n")
+    retriever.build_index(notes_dir)
+    encoded = count_encoded(monkeypatch)
+    write_note(notes_dir, "a.md", "# 과일\n## 사과\n빨간 사과\n## 포도\n포도\n")
+    retriever.build_index(notes_dir)
+    assert encoded == ["과일 > 사과\n빨간 사과"]
+    assert retriever.get_collection().get(ids=["a.md#과일 > 사과"])["documents"] == ["빨간 사과"]
+
+
 def test_search_returns_chunks_in_order(notes_dir):
     write_note(notes_dir, "a.md", "# 과일\n## 사과\n사과 사과 사과\n", date="2026-07-30")
     write_note(notes_dir, "b.md", "# 탈것\n## 기차\n기차 기차 기차\n")
