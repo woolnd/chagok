@@ -13,6 +13,8 @@ from parser import NOTES_DIR
 # 명사·동사·형용사·영어·숫자만. 조사·어미·기호는 검색에 도움이 안 된다
 KEEP_TAGS = {"NNG", "NNP", "VV", "VA", "SL", "SN"}
 TERMS_PATH = Path("terms.yaml")
+# 사전 켬/끔 비교용. 채택은 하이브리드에서 다시 정한다. docs/DECISIONS.md
+USE_TERMS = True
 PATH_SEP = " > "
 
 
@@ -20,6 +22,8 @@ PATH_SEP = " > "
 def get_kiwi() -> Kiwi:
     """형태소 분석기. 처음 만들 때 느려서 한 번만 만든다."""
     kiwi = Kiwi()
+    if not USE_TERMS:
+        return kiwi
     yaml_file = yaml.safe_load(TERMS_PATH.read_text(encoding="utf-8"))
     words = yaml_file["words"]
 
