@@ -19,24 +19,38 @@ q018,교차 엔트로피 오차,키워드,2026-10-17_neural_network_learning.md#
 q019,미니배치,키워드,2026-10-17_neural_network_learning.md#신경망 학습 > 5. 미니배치 학습,,회귀
 q020,손실함수 값을 최소화하는데 왜 기울기를 사용하는가?,문장,2026-10-17_neural_network_learning.md#신경망 학습 > 6. 왜 손실 함수를 쓰는가,,능력
 q021,오차제곱합이랑 교차 엔트로피 오차는 무엇이 다른가?,비교,2026-10-17_neural_network_learning.md#신경망 학습 > 4. 손실 함수,,능력
-q022,what is a hyperparameter?,한영혼용,2026-10-17_neural_network_learning.md#신경망 학습 > 9. 경사법 > 학습률과 하이퍼파라미터,,능력
+q022,hyperparameter가 뭐야?,한영혼용,2026-10-17_neural_network_learning.md#신경망 학습 > 9. 경사법 > 학습률과 하이퍼파라미터,,능력
 q023,경사 하강법을 제안한 사람은 누구야?,답없음,,경사 하강법과 가깝지만 역사는 노트에 없음,능력
 q024,모멘텀,키워드,2026-10-19_learning_techniques.md#학습 관련 기술들 > 1. 매개변수 갱신 > 모멘텀,,회귀
 q025,드롭아웃,키워드,2026-10-19_learning_techniques.md#학습 관련 기술들 > 4. 과대적합 > 드롭아웃,,회귀
 q026,초깃값이 크거나 작게 설정하면 어떻게 되?,문장,2026-10-19_learning_techniques.md#학습 관련 기술들 > 2. 가중치의 초깃값 > 초깃값이 너무 크거나 작으면,,회귀
 q027,그리드 서치와 랜덤 서치와 베이즈 최적화는 어떻게 다른가?,비교,2026-10-19_learning_techniques.md#학습 관련 기술들 > 6. 하이퍼파라미터 최적화 > 하이퍼파라미터 탐색 방법,,회귀
-q028,what is ensemble learning?,한영혼용,2026-10-19_learning_techniques.md#학습 관련 기술들 > 4. 과대적합 > 앙상블 학습,,회귀
+q028,ensemble learning은 어떤 방법이야?,한영혼용,2026-10-19_learning_techniques.md#학습 관련 기술들 > 4. 과대적합 > 앙상블 학습,,회귀
 q029,배치 정규화는 PyTorch에서 어떻게 써?,답없음,,배치 정규화 부분과 가깝지만 라이브러리 사용법은 노트에 없음,능력
 q030,CNN,키워드,2026-10-21_cnn.md#합성곱 신경망(CNN) > 1. 전체 구조,,능력
 q031,패딩,키워드,2026-10-21_cnn.md#합성곱 신경망(CNN) > 2. 합성곱 계층 > 패딩,,회귀
 q032,합성곱 계층의 필터의 역할은 무엇인가?,문장,2026-10-21_cnn.md#합성곱 신경망(CNN) > 4. 필터와 특징 맵,,회귀
 q033,LeNet과 AlexNet의 차이는 무엇인가?,비교,2026-10-21_cnn.md#합성곱 신경망(CNN) > 5. 대표적인 CNN > LeNet;2026-10-21_cnn.md#합성곱 신경망(CNN) > 5. 대표적인 CNN > AlexNet,,회귀
 q034,패딩과 스트라이드는 출력 크기에 각각 어떤 영향을 줘?,비교,2026-10-21_cnn.md#합성곱 신경망(CNN) > 2. 합성곱 계층 > 패딩;2026-10-21_cnn.md#합성곱 신경망(CNN) > 2. 합성곱 계층 > 스트라이드,,회귀
-q035,what is Skip Connection?,한영혼용,2026-10-21_cnn.md#합성곱 신경망(CNN) > 5. 대표적인 CNN > ResNet,,회귀
+q035,Skip Connection이 뭐야?,한영혼용,2026-10-21_cnn.md#합성곱 신경망(CNN) > 5. 대표적인 CNN > ResNet,,회귀
 q036,YOLO는 사물을 어떻게 찾아?,답없음,,사물 검출은 노트에서 뺐음,능력
 q037,수용 영역,키워드,2026-10-22_deep_learning.md#딥러닝 > 1. 층을 깊게 쌓기의 중요성,,회귀
 q038,전이학습,키워드,2026-10-22_deep_learning.md#딥러닝 > 2. 전이 학습,,회귀
 q039,층을 깊게하는 이유는 무엇인가?,문장,2026-10-22_deep_learning.md#딥러닝 > 1. 층을 깊게 쌓기의 중요성,,능력
 q040,지도 학습과 비지도 학습의 차이는 무엇인가?,비교,2026-10-22_deep_learning.md#딥러닝 > 3. 지도 학습;2026-10-22_deep_learning.md#딥러닝 > 4. 비지도 학습,,회귀
-q041,what is Fine-Tuning?,한영혼용,2026-10-22_deep_learning.md#딥러닝 > 2. 전이 학습,,회귀
+q041,Fine-Tuning은 무슨 뜻이야?,한영혼용,2026-10-22_deep_learning.md#딥러닝 > 2. 전이 학습,,회귀
 q042,GAN에서 생성자와 판별자는 어떤 역할을 해?,답없음,,노트에서 뺐음,능력
+q043,자연어,키워드,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 1. 자연어 처리,,회귀
+q044,토큰화,키워드,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 4. 말뭉치와 전처리 > 토큰화,,회귀
+q045,숫자 인코딩 이후 벡터화를 하는 이유는 무엇인가?,문장,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 4. 말뭉치와 전처리 > 벡터화(임베딩),,회귀
+q046,BoW와 TF-IDF 무슨 차이야?,비교,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 8. BoW와 TF-IDF > BoW;2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 8. BoW와 TF-IDF > TF-IDF,,능력
+q047,Thesaurus의 문제점이 뭐야?,한영혼용,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 3. 시소러스 > 시소러스의 문제점,,회귀
+q048,ELMo처럼 문맥에 따라 단어 벡터가 달라지는 방법은?,답없음,,맥락·분산과 가깝지만 ELMo는 노트에 없음,능력
+q049,CBOW,키워드,2026-10-28_word2vec.md#word2vec > 3. word2vec > CBOW 모델,,회귀
+q050,GloVe,키워드,2026-10-28_word2vec.md#word2vec > 5. GloVe,,회귀
+q051,CBOW에서의 입력층 가중치는 무슨 역할인가?,문장,2026-10-28_word2vec.md#word2vec > 3. word2vec > CBOW 모델,,회귀
+q052,CBOW와 skip-gram은 입력과 출력이 어떻게 달라?,비교,2026-10-28_word2vec.md#word2vec > 3. word2vec > CBOW 모델;2026-10-28_word2vec.md#word2vec > 3. word2vec > skip-gram 모델,,능력
+q053,word2vec은 왜 analogy문제를 풀 수 있어?,한영혼용,2026-10-28_word2vec.md#word2vec > 4. 통계 기반 vs 추론 기반 > 분산 표현의 성격,,능력
+q054,Doc2Vec으로 문서 전체를 벡터로 어떻게 만들어?,답없음,,word2vec과 가깝지만 Doc2Vec은 노트에 없음,능력
+q055,주변 단어 맞히기 문제를 풀고 나면 진짜로 가져다 쓰는 건 뭐야?,문장,2026-10-28_word2vec.md#word2vec > 3. word2vec,,회귀
+q056,어휘에 새 단어가 생기면 처음부터 다시 계산해야 해?,문장,2026-10-28_word2vec.md#word2vec > 4. 통계 기반 vs 추론 기반 > 새 단어 추가,,회귀
