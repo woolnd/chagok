@@ -19,7 +19,7 @@ def get_kiwi() -> Kiwi:
     """형태소 분석기. 처음 만들 때 느려서 한 번만 만든다."""
     return Kiwi()
 
-커밋ㅎ
+
 def tokenize(text: str) -> list[str]:
     """글을 형태소로 잘라 검색에 쓸 단어만 남긴다."""
     tokens = get_kiwi().tokenize(text)
