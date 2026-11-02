@@ -109,7 +109,10 @@ if __name__ == "__main__":
         # python src/evaluate.py threshold 0.56 → 관련도 기준선(임베딩 1등 거리)을 켜고 채점
         if "threshold" in args:
             hybrid.THRESHOLD = float(args[args.index("threshold") + 1])
-        print(f"관련도 기준선 {hybrid.THRESHOLD}\n")
+        # python src/evaluate.py rerank -9.6 → 리랭커 최고점 기준선을 켜고 채점
+        if "rerank" in args:
+            hybrid.RERANK_THRESHOLD = float(args[args.index("rerank") + 1])
+        print(f"관련도 기준선 거리 {hybrid.THRESHOLD} / 리랭커 {hybrid.RERANK_THRESHOLD}\n")
 
     rows = load_eval()
     check_indexed(rows)
