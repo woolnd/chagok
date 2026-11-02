@@ -6,6 +6,7 @@ import retriever
 RRF_K = 60  # RRF 공식의 상수. 논문 기본값
 CANDIDATES = 20  # 각 검색에서 가져올 후보 수
 WEIGHT = 0.8  # 임베딩 비중. 0.8 / 0.5 / 0.2 중 채택. docs/DECISIONS.md
+THRESHOLD = None
 
 
 def search(query: str, k: int = 5, weight: float = WEIGHT) -> list[dict]:
@@ -15,6 +16,9 @@ def search(query: str, k: int = 5, weight: float = WEIGHT) -> list[dict]:
     # 4. 점수 높은 순으로 k개 돌려주기
 
     retriev_candidates = retriever.search(query, CANDIDATES)
+
+    if THRESHOLD is not None and retriev_candidates[0]["distance"] >= THRESHOLD:
+        return []
     bm25_candidates = bm25.search(query, CANDIDATES)
 
     scores = {}  # 이름표: RRF 점수
