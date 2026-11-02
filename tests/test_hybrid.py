@@ -23,3 +23,26 @@ def test_weight_picks_stronger_side(monkeypatch):
 
     assert hybrid.search("질문", k=1, weight=0.8)[0]["path"] == ["A"]
     assert hybrid.search("질문", k=1, weight=0.2)[0]["path"] == ["B"]
+
+
+def fake_embedding(distance):
+    return lambda query, k: [{"file": "a.md", "path": ["A"], "distance": distance}]
+
+
+def test_rerank_gate(monkeypatch):
+    # 리랭커 최고점이 기준선보다 낮으면 막고, 높으면 통과. 꺼져 있으면 리랭커를 부르지 않는다
+    monkeypatch.setattr(hybrid.retriever, "search", fake_embedding(0.3))
+    monkeypatch.setattr(hybrid.bm25, "search", fake_results(["B"]))
+    monkeypatch.setattr(hybrid, "RERANK_THRESHOLD", -9.6)
+
+    monkeypatch.setattr(hybrid.reranker, "max_score", lambda query, chunks: -11.0)
+    assert hybrid.search("질문") == []
+    monkeypatch.setattr(hybrid.reranker, "max_score", lambda query, chunks: 2.0)
+    assert hybrid.search("질문") != []
+
+    def fail(query, chunks):
+        raise AssertionError("기준선이 꺼져 있으면 리랭커(2GB)를 불러오면 안 된다")
+
+    monkeypatch.setattr(hybrid.reranker, "max_score", fail)
+    monkeypatch.setattr(hybrid, "RERANK_THRESHOLD", None)
+    assert hybrid.search("질문") != []
