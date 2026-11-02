@@ -91,13 +91,23 @@ def summarize(ranks: list[int | None]) -> dict:
 
 if __name__ == "__main__":
     # python src/evaluate.py bm25 → BM25로 채점. 정답 경로는 같은 노트에서 나와 Chroma로 검사해도 된다
-    # python src/evaluate.py bm25 noterms → kiwi 사용자 사전을 끄고 채점
-    use_bm25 = "bm25" in sys.argv[1:]
-    if use_bm25:
-        import bm25
-        from bm25 import search
+    # python src/evaluate.py hybrid 0.5 → 하이브리드(임베딩 비중 0.5)로 채점. 숫자가 없으면 0.8
+    # 끝에 noterms를 붙이면 kiwi 사용자 사전을 끄고 채점 (bm25, hybrid 둘 다)
+    import bm25
 
-        bm25.USE_TERMS = "noterms" not in sys.argv[1:]
+    args = sys.argv[1:]
+    bm25.USE_TERMS = "noterms" not in args
+    use_bm25 = "bm25" in args
+    if use_bm25:
+        from bm25 import search
+    if "hybrid" in args:
+        import hybrid
+
+        i = args.index("hybrid") + 1
+        weight = float(args[i]) if i < len(args) and args[i] != "noterms" else 0.8
+        # find_rank는 search(질문, K)로만 불러서 가중치를 미리 넣어 둔다
+        search = lambda query, k: hybrid.search(query, k, weight)  # noqa: E731
+        print(f"하이브리드 임베딩 : BM25 = {weight} : {1 - weight:.1f}\n")
 
     rows = load_eval()
     check_indexed(rows)
