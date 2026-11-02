@@ -3,6 +3,7 @@ name = "chagok"
 version = "0.1.0"
 requires-python = ">=3.13,<3.14"
 dependencies = [
+    "anthropic>=2.3.0",
     "chromadb>=1.5.9",
     "kiwipiepy>=0.24.1",
     "markdown-it-py>=4.2.0",
