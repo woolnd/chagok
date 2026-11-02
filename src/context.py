@@ -9,10 +9,11 @@ import anthropic
 
 from chunker import chunk
 from parser import NOTES_DIR
-from retriever import PATH_SEP
 
+PATH_SEP = " > "
 MODEL = "claude-haiku-5-5"
 CONTEXT_PATH = Path("data/contexts.json")
+USE_CONTEXT = False
 
 
 @cache
@@ -61,6 +62,17 @@ def load_contexts() -> dict:
     if not CONTEXT_PATH.exists():
         return {}
     return json.loads(CONTEXT_PATH.read_text(encoding="utf-8"))
+
+
+def get_contexts() -> dict:
+    """색인에 쓸 맥락. 맥락을 끄면 빈 딕셔너리."""
+    return load_contexts() if USE_CONTEXT else {}
+
+
+def index_text(c: dict, contexts: dict) -> str:
+    """색인에 넣는 글. 맥락이 있으면 제목 경로 + 본문 앞에 붙인다."""
+    h = chunk_hash(c)
+    return contexts[h] + "\n" + chunk_text(c) if h in contexts else chunk_text(c)
 
 
 def build_contexts(notes_dir: Path = NOTES_DIR) -> int:

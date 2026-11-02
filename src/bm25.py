@@ -6,11 +6,11 @@ from pathlib import Path
 from kiwipiepy import Kiwi
 from rank_bm25 import BM25Okapi
 
+import context
 from chunker import chunk
 from parser import NOTES_DIR
 
 KEEP_TAGS = {"NNG", "NNP", "VV", "VA", "SL", "SN"}
-PATH_SEP = " > "
 
 
 @cache
@@ -34,9 +34,9 @@ def get_index(notes_dir: Path = NOTES_DIR) -> tuple[BM25Okapi, list[dict]]:
     for note in notes:
         chunks.extend(chunk(note))
 
+    contexts = context.get_contexts()
     for c in chunks:
-        text = PATH_SEP.join(c["path"]) + "\n" + c["text"]
-        corpus.append(tokenize(text))
+        corpus.append(tokenize(context.index_text(c, contexts)))
 
     return BM25Okapi(corpus), chunks
 

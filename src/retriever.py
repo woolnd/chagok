@@ -7,6 +7,7 @@ from pathlib import Path
 import chromadb
 from sentence_transformers import SentenceTransformer
 
+import context
 from chunker import chunk
 from parser import NOTES_DIR
 
@@ -34,7 +35,8 @@ def build_index(notes_dir: Path = NOTES_DIR) -> int:
     """노트 폴더의 청크를 Chroma에 저장한다. 바뀐 청크만 다시 임베딩한다."""
     chunks = [c for path in sorted(notes_dir.glob("*.md")) for c in chunk(path)]
     ids = [c["file"] + "#" + PATH_SEP.join(c["path"]) for c in chunks]
-    texts = [PATH_SEP.join(c["path"]) + "\n" + c["text"] for c in chunks]
+    contexts = context.get_contexts()
+    texts = [context.index_text(c, contexts) for c in chunks]
     hashes = [hashlib.sha256(t.encode()).hexdigest() for t in texts]
 
     collection = get_collection()
