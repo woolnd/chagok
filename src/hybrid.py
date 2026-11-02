@@ -1,12 +1,15 @@
 """임베딩과 BM25 검색 결과를 RRF로 합친다. 로컬 전용."""
 
 import bm25
+import reranker
 import retriever
 
 RRF_K = 60  # RRF 공식의 상수. 논문 기본값
 CANDIDATES = 20  # 각 검색에서 가져올 후보 수
 WEIGHT = 0.8  # 임베딩 비중. 0.8 / 0.5 / 0.2 중 채택. docs/DECISIONS.md
 THRESHOLD = None
+# 리랭커 최고점 기준선. None이면 끔. 이보다 낮으면 결과 없음 (#29)
+RERANK_THRESHOLD = None
 
 
 def search(query: str, k: int = 5, weight: float = WEIGHT) -> list[dict]:
@@ -32,4 +35,8 @@ def search(query: str, k: int = 5, weight: float = WEIGHT) -> list[dict]:
             found[key] = chunk
 
     top = sorted(scores, key=scores.get, reverse=True)[:k]
-    return [found[key] for key in top]
+    results = [found[key] for key in top]
+    # 게이트 1: 리랭커가 최종 결과를 읽어 보고, 가장 관련 있는 것도 낮으면 노트에 없다고 본다
+    if RERANK_THRESHOLD is not None and reranker.max_score(query, results) < RERANK_THRESHOLD:
+        return []
+    return results
