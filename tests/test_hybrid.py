@@ -23,3 +23,27 @@ def test_weight_picks_stronger_side(monkeypatch):
 
     assert hybrid.search("질문", k=1, weight=0.8)[0]["path"] == ["A"]
     assert hybrid.search("질문", k=1, weight=0.2)[0]["path"] == ["B"]
+
+
+def fake_embedding(distance):
+    # 임베딩 결과는 1등 거리만 있으면 된다. 게이트가 이 값으로 판단한다
+    return lambda query, k: [{"file": "a.md", "path": ["A"], "distance": distance}]
+
+
+def test_gate_blocks_far_query(monkeypatch):
+    # 1등도 기준선보다 멀면 노트에 관련 내용이 없다고 보고 빈 결과를 돌려준다
+    monkeypatch.setattr(hybrid.retriever, "search", fake_embedding(0.6))
+    monkeypatch.setattr(hybrid.bm25, "search", fake_results(["B"]))
+    monkeypatch.setattr(hybrid, "THRESHOLD", 0.54)
+    assert hybrid.search("질문") == []
+
+
+def test_gate_passes_near_query_and_is_off_by_default(monkeypatch):
+    monkeypatch.setattr(hybrid.retriever, "search", fake_embedding(0.3))
+    monkeypatch.setattr(hybrid.bm25, "search", fake_results(["B"]))
+    monkeypatch.setattr(hybrid, "THRESHOLD", 0.54)
+    assert hybrid.search("질문") != []
+    # 기준선을 끄면(None) 아무리 멀어도 막지 않는다
+    monkeypatch.setattr(hybrid.retriever, "search", fake_embedding(0.9))
+    monkeypatch.setattr(hybrid, "THRESHOLD", None)
+    assert hybrid.search("질문") != []
