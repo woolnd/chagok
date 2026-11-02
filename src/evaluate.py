@@ -2,7 +2,8 @@ import csv
 import sys
 from pathlib import Path
 
-from retriever import PATH_SEP, get_collection, search
+import context
+from retriever import PATH_SEP, build_index, get_collection, search
 
 EVAL_PATH = Path("eval/retrieval.csv")
 K = 5
@@ -78,6 +79,10 @@ if __name__ == "__main__":
                 float(args[j]) if j < len(args) else reranker.THRESHOLD
             )
         print(f"리랭커 게이트 {hybrid.RERANK_THRESHOLD}\n")
+
+    context.USE_CONTEXT = "context" in args
+    print(f"청크 맥락 {'켬' if context.USE_CONTEXT else '끔'}\n")
+    build_index()
 
     rows = load_eval()
     check_indexed(rows)
