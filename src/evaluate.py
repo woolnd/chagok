@@ -2,8 +2,7 @@ import csv
 import sys
 from pathlib import Path
 
-import context
-from retriever import PATH_SEP, build_index, get_collection, search
+from retriever import PATH_SEP, get_collection, search
 
 EVAL_PATH = Path("eval/retrieval.csv")
 K = 5
@@ -75,14 +74,8 @@ if __name__ == "__main__":
             import reranker
 
             j = args.index("rerank") + 1
-            hybrid.RERANK_THRESHOLD = (
-                float(args[j]) if j < len(args) else reranker.THRESHOLD
-            )
+            hybrid.RERANK_THRESHOLD = float(args[j]) if j < len(args) else reranker.THRESHOLD
         print(f"리랭커 게이트 {hybrid.RERANK_THRESHOLD}\n")
-
-    context.USE_CONTEXT = "context" in args
-    print(f"청크 맥락 {'켬' if context.USE_CONTEXT else '끔'}\n")
-    build_index()
 
     rows = load_eval()
     check_indexed(rows)
@@ -124,6 +117,4 @@ if __name__ == "__main__":
 
     regression = summarize([r["rank"] for r in groups["회귀"]])
     if not use_bm25 and regression["hit5"] < REGRESSION_TARGET:
-        raise SystemExit(
-            f"\n회귀 Hit@5 {regression['hit5']:.0%} < 목표 {REGRESSION_TARGET:.0%}"
-        )
+        raise SystemExit(f"\n회귀 Hit@5 {regression['hit5']:.0%} < 목표 {REGRESSION_TARGET:.0%}")
