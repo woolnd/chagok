@@ -5,9 +5,10 @@ import retriever
 
 RRF_K = 60  # RRF 공식의 상수. 논문 기본값
 CANDIDATES = 20  # 각 검색에서 가져올 후보 수
+WEIGHT = 0.8  # 임베딩 비중. 0.8 / 0.5 / 0.2 중 채택. docs/DECISIONS.md
 
 
-def search(query: str, k: int = 5, weight: float = 0.8) -> list[dict]:
+def search(query: str, k: int = 5, weight: float = WEIGHT) -> list[dict]:
     # 1. 임베딩 검색 후보 CANDIDATES개
     # 2. BM25 검색 후보 CANDIDATES개
     # 3. 청크마다 RRF 점수 더하기
