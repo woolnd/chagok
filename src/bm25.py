@@ -9,7 +9,6 @@ from rank_bm25 import BM25Okapi
 from chunker import chunk
 from parser import NOTES_DIR
 
-# 명사·동사·형용사·영어·숫자만. 조사·어미·기호는 검색에 도움이 안 된다
 KEEP_TAGS = {"NNG", "NNP", "VV", "VA", "SL", "SN"}
 PATH_SEP = " > "
 
@@ -23,7 +22,6 @@ def get_kiwi() -> Kiwi:
 def tokenize(text: str) -> list[str]:
     """글을 형태소로 잘라 검색에 쓸 단어만 남긴다."""
     tokens = get_kiwi().tokenize(text)
-    # 불규칙 활용은 "VA-I"처럼 붙어 나와서 앞부분만 본다
     return [token.form for token in tokens if token.tag.split("-")[0] in KEEP_TAGS]
 
 
@@ -50,7 +48,6 @@ def search(query: str, k: int = 5) -> list[dict]:
     scores = bm25.get_scores(query_tokens)
 
     results = []
-    # argsort는 낮은 순이라 뒤집는다. 점수가 아니라 인덱스를 정렬해 chunks에서 바로 꺼낸다
     for i in scores.argsort()[::-1][:k]:
         c = chunks[i]
         results.append(

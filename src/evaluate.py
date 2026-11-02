@@ -4,41 +4,24 @@ from pathlib import Path
 
 from retriever import PATH_SEP, get_collection, search
 
-EVAL_PATH = Path("eval/retrieval.csv")  # 프로젝트 루트 기준
+EVAL_PATH = Path("eval/retrieval.csv")
 K = 5
-REGRESSION_TARGET = 1.0  # 회귀 Hit@5 목표치. docs/DESIGN.md
+REGRESSION_TARGET = 1.0
 
 
 def load_eval(path: Path = EVAL_PATH) -> list[dict]:
-    """평가셋 csv를 읽는다.
-
-    Args:
-        path: 평가셋 csv 경로.
-
-    Returns:
-        질문마다 {"id", "query", "type", "answers", "memo"}.
-        answers는 "파일#소제목 > 경로" 리스트이고, 답없음은 빈 리스트다.
-    """
+    """평가셋 csv를 읽는다."""
     with open(path, "r", encoding="utf-8") as csv_file:
         rows = list(csv.DictReader(csv_file))
 
     for row in rows:
-        # 정답이 여러 개면 한 칸에 ";"로 이어져 있다. 빈칸은 [""]가 되지 않게 따로 처리
         row["answers"] = row["answers"].split(";") if row["answers"] else []
 
     return rows
 
 
 def check_indexed(rows: list[dict]) -> None:
-    """정답 경로가 모두 색인에 있는지 확인하고, 없으면 멈춘다.
-
-    Args:
-        rows: load_eval 결과.
-
-    Raises:
-        SystemExit: 색인에 없는 정답이 하나라도 있을 때.
-    """
-    # 색인 id는 "파일#소제목 > 경로"라 answers와 그대로 비교된다
+    """정답 경로가 모두 색인에 있는지 확인하고, 없으면 멈춘다."""
     indexed = set(get_collection().get(include=[])["ids"])
 
     missing = []
@@ -54,15 +37,8 @@ def check_indexed(rows: list[dict]) -> None:
 
 
 def find_rank(row: dict) -> int | None:
-    """질문 하나를 검색해 정답이 처음 나온 등수를 찾는다.
-
-    Args:
-        row: 평가셋 한 행.
-
-    Returns:
-        1부터 K까지의 등수. 상위 K개 안에 정답이 없으면 None.
-    """
-    chunks = search(row["query"], K)  # search(질문, K)
+    """질문 하나를 검색해 정답이 처음 나온 등수를 찾는다."""
+    chunks = search(row["query"], K)
 
     for rank, chunk in enumerate(chunks, start=1):
         key = f"{chunk['file']}#{PATH_SEP.join(chunk['path'])}"
@@ -73,14 +49,7 @@ def find_rank(row: dict) -> int | None:
 
 
 def summarize(ranks: list[int | None]) -> dict:
-    """등수 목록으로 Hit@5, Hit@1, MRR을 계산한다.
-
-    Args:
-        ranks: 질문마다 find_rank 결과.
-
-    Returns:
-        {"n", "hit5", "hit1", "mrr"}. hit5·hit1은 0~1 비율.
-    """
+    """등수 목록으로 Hit@5, Hit@1, MRR을 계산한다."""
     n = len(ranks)
     hit5 = sum(r is not None for r in ranks) / n
     hit1 = sum(r == 1 for r in ranks) / n
@@ -90,10 +59,6 @@ def summarize(ranks: list[int | None]) -> dict:
 
 
 if __name__ == "__main__":
-    # python src/evaluate.py → 하이브리드(임베딩 0.8 : BM25 0.2)로 채점. CI도 이걸 돌린다
-    # python src/evaluate.py hybrid 0.5 → 임베딩 비중을 바꿔 채점
-    # python src/evaluate.py embedding / bm25 → 한쪽 검색만으로 채점 (비교용)
-    # 정답 경로는 같은 노트에서 나와 BM25도 Chroma로 검사해도 된다
     args = sys.argv[1:]
     use_bm25 = "bm25" in args
     if use_bm25:
@@ -103,13 +68,10 @@ if __name__ == "__main__":
 
         i = args.index("hybrid") + 1 if "hybrid" in args else len(args)
         weight = float(args[i]) if i < len(args) else hybrid.WEIGHT
-        # find_rank는 search(질문, K)로만 불러서 가중치를 미리 넣어 둔다
         search = lambda query, k: hybrid.search(query, k, weight)  # noqa: E731
         print(f"하이브리드 임베딩 : BM25 = {weight} : {1 - weight:.1f}")
-        # python src/evaluate.py threshold 0.56 → 관련도 기준선(임베딩 1등 거리)을 켜고 채점
         if "threshold" in args:
             hybrid.THRESHOLD = float(args[args.index("threshold") + 1])
-        # python src/evaluate.py rerank -9.6 → 리랭커 최고점 기준선을 켜고 채점
         if "rerank" in args:
             hybrid.RERANK_THRESHOLD = float(args[args.index("rerank") + 1])
         print(f"관련도 기준선 거리 {hybrid.THRESHOLD} / 리랭커 {hybrid.RERANK_THRESHOLD}\n")
@@ -117,13 +79,11 @@ if __name__ == "__main__":
     rows = load_eval()
     check_indexed(rows)
 
-    # 답없음은 맞힐 정답이 없어 지금은 채점하지 않는다
     scored = [row for row in rows if row["type"] != "답없음"]
 
     for row in scored:
         row["rank"] = find_rank(row)
 
-    # 회귀는 Hit@5가 떨어지지 않는지, 능력은 MRR이 오르는지 본다
     groups = {
         "전체": scored,
         "회귀": [r for r in scored if r["set"] == "회귀"],
@@ -141,7 +101,6 @@ if __name__ == "__main__":
         s = summarize([r["rank"] for r in group])
         print(f"{name:14}{s['n']:>4}{s['hit5']:>8.0%}{s['hit1']:>8.0%}{s['mrr']:>7.2f}")
 
-    # 틀린 질문은 상위 K개를 같이 보여준다. 빠뜨린 정답인지 검색 실패인지 사람이 판단
     print("\n틀린 질문")
     for row in scored:
         if row["rank"] is None:
@@ -149,14 +108,12 @@ if __name__ == "__main__":
             for i, chunk in enumerate(search(row["query"], K), start=1):
                 print(f"  {i}. {chunk['file']}#{PATH_SEP.join(chunk['path'])}")
 
-    # 답없음은 결과 없음을 돌려줘야 정답이다. 기준선이 꺼져 있으면 항상 0개
     no_answer = [row for row in rows if row["type"] == "답없음"]
     blocked = [row for row in no_answer if not search(row["query"], K)]
     print(f"\n답없음 {len(no_answer)}개 중 결과 없음 {len(blocked)}개")
     for row in no_answer:
         print(f"  {'✅' if row in blocked else '❌'} {row['id']} {row['query']}")
 
-    # CI는 종료 코드로 판정한다. 회귀 평가셋은 임베딩 검색 기준으로 나눠서 BM25는 검사하지 않는다
     regression = summarize([r["rank"] for r in groups["회귀"]])
     if not use_bm25 and regression["hit5"] < REGRESSION_TARGET:
         raise SystemExit(f"\n회귀 Hit@5 {regression['hit5']:.0%} < 목표 {REGRESSION_TARGET:.0%}")
