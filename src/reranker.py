@@ -9,6 +9,7 @@ from retriever import PATH_SEP
 
 MODEL = "dragonkue/bge-reranker-v2-m3-ko"
 MAX_LENGTH = 256
+THRESHOLD = -9.6
 
 
 @cache

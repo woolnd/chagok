@@ -70,11 +70,12 @@ if __name__ == "__main__":
         weight = float(args[i]) if i < len(args) else hybrid.WEIGHT
         search = lambda query, k: hybrid.search(query, k, weight)  # noqa: E731
         print(f"하이브리드 임베딩 : BM25 = {weight} : {1 - weight:.1f}")
-        if "threshold" in args:
-            hybrid.THRESHOLD = float(args[args.index("threshold") + 1])
         if "rerank" in args:
-            hybrid.RERANK_THRESHOLD = float(args[args.index("rerank") + 1])
-        print(f"관련도 기준선 거리 {hybrid.THRESHOLD} / 리랭커 {hybrid.RERANK_THRESHOLD}\n")
+            import reranker
+
+            j = args.index("rerank") + 1
+            hybrid.RERANK_THRESHOLD = float(args[j]) if j < len(args) else reranker.THRESHOLD
+        print(f"리랭커 게이트 {hybrid.RERANK_THRESHOLD}\n")
 
     rows = load_eval()
     check_indexed(rows)
