@@ -105,7 +105,11 @@ if __name__ == "__main__":
         weight = float(args[i]) if i < len(args) else hybrid.WEIGHT
         # find_rank는 search(질문, K)로만 불러서 가중치를 미리 넣어 둔다
         search = lambda query, k: hybrid.search(query, k, weight)  # noqa: E731
-        print(f"하이브리드 임베딩 : BM25 = {weight} : {1 - weight:.1f}\n")
+        print(f"하이브리드 임베딩 : BM25 = {weight} : {1 - weight:.1f}")
+        # python src/evaluate.py threshold 0.56 → 관련도 기준선(임베딩 1등 거리)을 켜고 채점
+        if "threshold" in args:
+            hybrid.THRESHOLD = float(args[args.index("threshold") + 1])
+        print(f"관련도 기준선 {hybrid.THRESHOLD}\n")
 
     rows = load_eval()
     check_indexed(rows)
@@ -141,6 +145,13 @@ if __name__ == "__main__":
             print(f"{row['id']} [{row['type']}] {row['query']}")
             for i, chunk in enumerate(search(row["query"], K), start=1):
                 print(f"  {i}. {chunk['file']}#{PATH_SEP.join(chunk['path'])}")
+
+    # 답없음은 결과 없음을 돌려줘야 정답이다. 기준선이 꺼져 있으면 항상 0개
+    no_answer = [row for row in rows if row["type"] == "답없음"]
+    blocked = [row for row in no_answer if not search(row["query"], K)]
+    print(f"\n답없음 {len(no_answer)}개 중 결과 없음 {len(blocked)}개")
+    for row in no_answer:
+        print(f"  {'✅' if row in blocked else '❌'} {row['id']} {row['query']}")
 
     # CI는 종료 코드로 판정한다. 회귀 평가셋은 임베딩 검색 기준으로 나눠서 BM25는 검사하지 않는다
     regression = summarize([r["rank"] for r in groups["회귀"]])
