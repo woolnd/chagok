@@ -78,3 +78,11 @@ def test_summarize():
     assert s["hit5"] == pytest.approx(2 / 3)
     assert s["hit1"] == pytest.approx(1 / 3)
     assert s["mrr"] == pytest.approx((1 + 1 / 3) / 3)
+
+
+def test_find_rank_parent(monkeypatch):
+    # parent면 돌려준 부모 섹션 아래 정답도 맞음. 끄면 경로가 똑같아야만 맞음
+    monkeypatch.setattr(evaluate, "search", fake_search([["A", "X"], ["A"]]))
+    row = {"query": "질문", "answers": ["a.md#A > B"]}
+    assert evaluate.find_rank(row, parent=True) == 2
+    assert evaluate.find_rank(row) is None
