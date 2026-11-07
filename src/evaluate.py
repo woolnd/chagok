@@ -124,4 +124,4 @@ if __name__ == "__main__":
 
     regression = summarize([r["rank"] for r in groups["회귀"]])
     if not use_bm25 and regression["hit5"] < REGRESSION_TARGET:
-        raise SystemExit(f"\n회귀 Hit@5 {regression['hit5']:.0%} < 목표 {REGRESSION_TARGET:.0%}")
+        raise SystemExit(f"\n회귀 Hit@{K} {regression['hit5']:.0%} < 목표 {REGRESSION_TARGET:.0%}")
