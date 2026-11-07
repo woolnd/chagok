@@ -36,14 +36,15 @@ def check_indexed(rows: list[dict]) -> None:
         raise SystemExit("색인에 없는 정답이 있다. build_index()를 다시 돌려라")
 
 
-def find_rank(row: dict) -> int | None:
-    """질문 하나를 검색해 정답이 처음 나온 등수를 찾는다."""
+def find_rank(row: dict, parent: bool = False) -> int | None:
+    """질문 하나를 검색해 정답이 처음 나온 등수를 찾는다. parent면 정답의 상위 섹션도 맞음."""
     chunks = search(row["query"], K)
 
     for rank, chunk in enumerate(chunks, start=1):
         key = f"{chunk['file']}#{PATH_SEP.join(chunk['path'])}"
-        if key in row["answers"]:
-            return rank
+        for answer in row["answers"]:
+            if answer == key or (parent and answer.startswith(key + PATH_SEP)):
+                return rank
 
     return None
 
@@ -60,6 +61,9 @@ def summarize(ranks: list[int | None]) -> dict:
 
 if __name__ == "__main__":
     args = sys.argv[1:]
+    if "k" in args:
+        K = int(args[args.index("k") + 1])
+    parent = "parent" in args
     use_bm25 = "bm25" in args
     if use_bm25:
         from bm25 import search
@@ -75,7 +79,8 @@ if __name__ == "__main__":
 
             j = args.index("rerank") + 1
             hybrid.RERANK_THRESHOLD = float(args[j]) if j < len(args) else reranker.THRESHOLD
-        print(f"리랭커 게이트 {hybrid.RERANK_THRESHOLD}\n")
+        hybrid.PARENT = parent
+        print(f"리랭커 게이트 {hybrid.RERANK_THRESHOLD}, Parent Document {parent}, K {K}\n")
 
     rows = load_eval()
     check_indexed(rows)
@@ -83,7 +88,7 @@ if __name__ == "__main__":
     scored = [row for row in rows if row["type"] != "답없음"]
 
     for row in scored:
-        row["rank"] = find_rank(row)
+        row["rank"] = find_rank(row, parent)
 
     groups = {
         "전체": scored,
@@ -95,7 +100,7 @@ if __name__ == "__main__":
     for qtype in ("문장", "비교", "한영혼용"):
         groups[f"  {qtype}"] = [r for r in scored if r["type"] == qtype]
 
-    print(f"{'':14}{'개수':>4}{'Hit@5':>8}{'Hit@1':>8}{'MRR':>7}")
+    print(f"{'':14}{'개수':>4}{f'Hit@{K}':>8}{'Hit@1':>8}{'MRR':>7}")
     for name, group in groups.items():
         if not group:
             continue
