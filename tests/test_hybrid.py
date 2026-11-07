@@ -46,3 +46,16 @@ def test_rerank_gate(monkeypatch):
     monkeypatch.setattr(hybrid.reranker, "max_score", fail)
     monkeypatch.setattr(hybrid, "RERANK_THRESHOLD", None)
     assert hybrid.search("질문") != []
+
+
+def test_parent_groups_siblings(monkeypatch):
+    # 형제 섹션은 ## 부모 하나로 묶이고, 빈 칸에 다음 부모가 올라온다. 끄면 그대로
+    paths = [["T", "5", "LeNet"], ["T", "5", "AlexNet"], ["T", "1"], ["T", "2", "블록"]]
+    fake = lambda query, k: [{"file": "a.md", "path": p} for p in paths][:k]  # noqa: E731
+    monkeypatch.setattr(hybrid.retriever, "search", fake)
+    monkeypatch.setattr(hybrid.bm25, "search", fake)
+
+    monkeypatch.setattr(hybrid, "PARENT", True)
+    assert [r["path"] for r in hybrid.search("질문", k=3)] == [["T", "5"], ["T", "1"], ["T", "2"]]
+    monkeypatch.setattr(hybrid, "PARENT", False)
+    assert [r["path"] for r in hybrid.search("질문", k=3)] == paths[:3]
