@@ -63,7 +63,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if "k" in args:
         K = int(args[args.index("k") + 1])
-    parent = "parent" in args
+    parent = False
     use_bm25 = "bm25" in args
     if use_bm25:
         from bm25 import search
@@ -79,7 +79,9 @@ if __name__ == "__main__":
 
             j = args.index("rerank") + 1
             hybrid.RERANK_THRESHOLD = float(args[j]) if j < len(args) else reranker.THRESHOLD
-        hybrid.PARENT = parent
+        if "noparent" in args:
+            hybrid.PARENT = False
+        parent = hybrid.PARENT
         print(f"리랭커 게이트 {hybrid.RERANK_THRESHOLD}, Parent Document {parent}, K {K}\n")
 
     rows = load_eval()

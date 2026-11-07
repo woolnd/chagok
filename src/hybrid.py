@@ -8,7 +8,7 @@ RRF_K = 60
 CANDIDATES = 20
 WEIGHT = 0.8
 RERANK_THRESHOLD = None
-PARENT = False
+PARENT = True
 
 
 def search(query: str, k: int = 5, weight: float = WEIGHT) -> list[dict]:
