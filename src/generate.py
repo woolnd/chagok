@@ -5,6 +5,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 import anthropic
 from pydantic import BaseModel
@@ -40,6 +41,20 @@ GENERATE = """<instructions>
 4. 인용할 문장이 없으면 insufficient를 true로 하고 나머지는 비운다.
 </instructions>"""
 
+EVALUATE = """<problem>
+{problem}
+</problem>
+
+<instructions>
+너는 평가자다. 위 문제가 어떻게 만들어졌는지는 모른다. <documents>의 노트 원문만 근거로 <rubric>의 항목마다 통과 / 미달 / 판단 불가를 매겨라.
+- 각 항목의 reason에는 판정 이유를 한 문장으로 쓴다.
+- 미달이 하나라도 있으면 feedback에 문제를 고칠 방법을 쓴다. 모두 통과면 feedback은 비운다.
+- 노트만으로 판단할 수 없으면 판단 불가로 한다.
+</instructions>"""
+
+Verdict = Literal["통과", "미달", "판단 불가"]
+ITEMS = ("answer_quote", "clarity", "difficulty", "follow_up_premise")
+
 
 class Generated(BaseModel):
     quotes: list[str]
@@ -47,6 +62,24 @@ class Generated(BaseModel):
     answer: str
     follow_up: str
     insufficient: bool
+
+
+class Judgment(BaseModel):
+    verdict: Verdict
+    reason: str
+
+
+class Evaluation(BaseModel):
+    answer_quote: Judgment
+    clarity: Judgment
+    difficulty: Judgment
+    follow_up_premise: Judgment
+    feedback: str
+
+    def verdict(self) -> Verdict:
+        """항목 판정을 하나로 모은다. 미달 하나면 미달, 판단 불가 하나면 판단 불가."""
+        verdicts = [getattr(self, item).verdict for item in ITEMS]
+        return "미달" if "미달" in verdicts else "판단 불가" if "판단 불가" in verdicts else "통과"
 
 
 def find_docs(keyword: str, k: int = 5) -> list[dict]:
@@ -80,6 +113,15 @@ def ask(client: anthropic.Anthropic, docs: list[dict], instructions: str, output
 def generate(client: anthropic.Anthropic, keyword: str, docs: list[dict]) -> tuple[Generated | None, anthropic.types.Message]:
     """노트 원문을 인용해 질문·답·꼬리질문을 만든다. 거절되면 None."""
     response = ask(client, docs, GENERATE.format(keyword=keyword), Generated)
+    if response.stop_reason == "refusal":
+        return None, response
+    return response.parsed_output, response
+
+
+def evaluate(client: anthropic.Anthropic, docs: list[dict], result: Generated) -> tuple[Evaluation | None, anthropic.types.Message]:
+    """생성 대화를 보지 않고 문제를 기준표로 채점한다. 거절되면 None."""
+    problem = result.model_dump_json(include={"quotes", "question", "answer", "follow_up"}, indent=2)
+    response = ask(client, docs, EVALUATE.format(problem=problem), Evaluation)
     if response.stop_reason == "refusal":
         return None, response
     return response.parsed_output, response
