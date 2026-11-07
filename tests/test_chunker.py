@@ -31,3 +31,15 @@ def test_intro_is_not_chunked(tmp_path):
     body = "# 제목\n서론\n## A\n가\n"
     texts = [c["text"] for c in chunk(write_note(tmp_path, body))]
     assert texts == ["가"]
+
+
+def test_parent_text_takes_children_only(tmp_path, monkeypatch):
+    # 부모 아래 하위 섹션까지 소제목과 함께 붙이고, 옆 섹션은 빼고, 없는 경로면 빈 문자열
+    import chunker
+
+    write_note(tmp_path, "# 제목\n## A\n가\n### B\n나\n## C\n다\n")
+    monkeypatch.setattr(chunker, "NOTES_DIR", tmp_path)
+
+    assert chunker.parent_text("note.md", ["제목", "A"]) == "## A\n가\n\n### B\n나"
+    assert chunker.parent_text("note.md", ["제목", "C"]) == "## C\n다"
+    assert chunker.parent_text("note.md", ["제목", "X"]) == ""
