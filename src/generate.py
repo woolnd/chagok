@@ -19,6 +19,7 @@ MODEL = "claude-sonnet-5-5"
 EFFORT = "medium"
 MAX_TOKENS = 4000
 ATTEMPTS = 2
+MAX_CALLS = 5
 PROMPT_VERSION = "v2"
 RUNS_PATH = Path("data/runs/generate.jsonl")
 
@@ -40,6 +41,15 @@ GENERATE = """<instructions>
 3. 질문은 두 가지까지만 묻는다. 더 묻고 싶은 것은 꼬리질문으로 돌린다.
 4. 인용할 문장이 없으면 insufficient를 true로 하고 나머지는 비운다.
 </instructions>"""
+
+REVISE = """<feedback>
+아래 문제가 평가자에게 미달을 받았다. 피드백을 반영해 새로 만들어라.
+{problem}
+
+평가자 피드백: {feedback}
+</feedback>
+
+"""
 
 EVALUATE = """<problem>
 {problem}
@@ -110,9 +120,9 @@ def ask(client: anthropic.Anthropic, docs: list[dict], instructions: str, output
     )
 
 
-def generate(client: anthropic.Anthropic, keyword: str, docs: list[dict]) -> tuple[Generated | None, anthropic.types.Message]:
-    """노트 원문을 인용해 질문·답·꼬리질문을 만든다. 거절되면 None."""
-    response = ask(client, docs, GENERATE.format(keyword=keyword), Generated)
+def generate(client: anthropic.Anthropic, keyword: str, docs: list[dict], feedback: str = "") -> tuple[Generated | None, anthropic.types.Message]:
+    """노트 원문을 인용해 질문·답·꼬리질문을 만든다. feedback이 있으면 앞에 붙인다. 거절되면 None."""
+    response = ask(client, docs, feedback + GENERATE.format(keyword=keyword), Generated)
     if response.stop_reason == "refusal":
         return None, response
     return response.parsed_output, response
@@ -141,11 +151,11 @@ def check(result: Generated, docs: list[dict]) -> list[str]:
     return errors
 
 
-def run(client: anthropic.Anthropic, keyword: str, docs: list[dict]) -> tuple[Generated | None, list[str], list]:
-    """생성하고 게이트 2에 걸리면 1회 다시 만든다. 마지막 결과, 실패 이유, 응답들을 돌려준다."""
+def run(client: anthropic.Anthropic, keyword: str, docs: list[dict], feedback: str = "", attempts: int = ATTEMPTS) -> tuple[Generated | None, list[str], list]:
+    """생성하고 게이트 2에 걸리면 attempts번까지 다시 만든다. 마지막 결과, 실패 이유, 응답들을 돌려준다."""
     responses = []
-    for _ in range(ATTEMPTS):
-        result, response = generate(client, keyword, docs)
+    for _ in range(attempts):
+        result, response = generate(client, keyword, docs, feedback)
         responses.append(response)
         errors = ["거절됨"] if result is None else check(result, docs)
         if not errors:
@@ -153,8 +163,49 @@ def run(client: anthropic.Anthropic, keyword: str, docs: list[dict]) -> tuple[Ge
     return result, errors, responses
 
 
-def log_run(keyword: str, docs: list[dict], result: Generated | None, errors: list[str], responses: list, seconds: float) -> dict:
+def produce(client: anthropic.Anthropic, keyword: str, docs: list[dict]) -> dict:
+    """생성 → 게이트 2 → 평가자 → 게이트 3. 미달이면 피드백으로 1회 재생성한다. 호출은 MAX_CALLS번까지."""
+    outcome = {"status": "", "result": None, "gate2": [], "evaluations": [], "revised": False, "responses": []}
+    feedback = ""
+    for round_ in range(2):
+        outcome["revised"] = round_ == 1
+        attempts = min(ATTEMPTS, MAX_CALLS - len(outcome["responses"]))
+        result, errors, responses = run(client, keyword, docs, feedback, attempts)
+        outcome.update(result=result, gate2=errors)
+        outcome["responses"] += responses
+        if errors:
+            outcome["status"] = "게이트 2 실패"
+            return outcome
+        if result.insufficient:
+            outcome["status"] = "근거 부족"
+            return outcome
+        if len(outcome["responses"]) >= MAX_CALLS:
+            outcome["status"] = "판단 불가"
+            return outcome
+
+        evaluation, response = evaluate(client, docs, result)
+        outcome["responses"].append(response)
+        if evaluation is None:
+            outcome["status"] = "판단 불가"
+            return outcome
+        outcome["evaluations"].append(evaluation.model_dump())
+        verdict = evaluation.verdict()
+        if verdict == "통과":
+            outcome["status"] = "검토 대기"
+            return outcome
+        if verdict == "판단 불가":
+            outcome["status"] = "판단 불가"
+            return outcome
+
+        problem = result.model_dump_json(include={"question", "answer", "follow_up"}, indent=2)
+        feedback = REVISE.format(problem=problem, feedback=evaluation.feedback)
+    outcome["status"] = "탈락"
+    return outcome
+
+
+def log_run(keyword: str, docs: list[dict], outcome: dict, seconds: float) -> dict:
     """실행 한 번을 실행 기록 JSONL에 한 줄로 덧붙인다."""
+    result, responses = outcome["result"], outcome["responses"]
     record = {
         "date": datetime.now().isoformat(timespec="seconds"),
         "keyword": keyword,
@@ -162,9 +213,12 @@ def log_run(keyword: str, docs: list[dict], result: Generated | None, errors: li
         "effort": EFFORT,
         "prompt_version": PROMPT_VERSION,
         "sources": [d["source"] for d in docs],
-        "attempts": len(responses),
+        "status": outcome["status"],
+        "calls": len(responses),
         "stop_reasons": [r.stop_reason for r in responses],
-        "gate2": errors,
+        "gate2": outcome["gate2"],
+        "evaluations": outcome["evaluations"],
+        "revised": outcome["revised"],
         "result": result.model_dump() if result else None,
         "tokens": {
             "input": sum(r.usage.input_tokens for r in responses),
@@ -189,10 +243,13 @@ if __name__ == "__main__":
         raise SystemExit(f"'{keyword}': 기록 비어 있음 (게이트 1)")
 
     start = time.perf_counter()
-    result, errors, responses = run(anthropic.Anthropic(), keyword, docs)
-    record = log_run(keyword, docs, result, errors, responses, time.perf_counter() - start)
+    outcome = produce(anthropic.Anthropic(), keyword, docs)
+    record = log_run(keyword, docs, outcome, time.perf_counter() - start)
     print("출처:", *[d["source"] for d in docs], sep="\n  ")
-    if result is not None:
-        print("\n" + result.model_dump_json(indent=2))
-    print(f"\n게이트 2: {'통과' if not errors else '실패'} (시도 {len(responses)}번)", *errors, sep="\n  ")
+    if outcome["result"] is not None:
+        print("\n" + outcome["result"].model_dump_json(indent=2))
+    for evaluation in outcome["evaluations"]:
+        verdicts = " ".join(evaluation[item]["verdict"] for item in ITEMS)
+        print(f"\n평가자: {verdicts}" + (f"\n  피드백: {evaluation['feedback']}" if evaluation["feedback"] else ""))
+    print(f"\n상태: {record['status']} (호출 {record['calls']}번)", *outcome["gate2"], sep="\n  ")
     print(f"\n{record['tokens']} | {record['seconds']}초 → {RUNS_PATH}")

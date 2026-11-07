@@ -37,25 +37,27 @@ def test_check_passes_insufficient():
 def test_run_retries_once(monkeypatch):
     # 1회차가 게이트 2에 걸리면 한 번만 다시 만든다
     results = iter([BAD, OK])
-    monkeypatch.setattr(generate, "generate", lambda client, k, d: (next(results), fake_response()))
+    monkeypatch.setattr(generate, "generate", lambda client, k, d, f="": (next(results), fake_response()))
     result, errors, responses = generate.run(None, "풀링", DOCS)
     assert (result, errors, len(responses)) == (OK, [], 2)
 
-    monkeypatch.setattr(generate, "generate", lambda client, k, d: (BAD, fake_response()))
+    monkeypatch.setattr(generate, "generate", lambda client, k, d, f="": (BAD, fake_response()))
     result, errors, responses = generate.run(None, "풀링", DOCS)
     assert errors and len(responses) == 2
 
 
 def test_run_counts_refusal_as_failure(monkeypatch):
-    monkeypatch.setattr(generate, "generate", lambda client, k, d: (None, fake_response("refusal")))
+    monkeypatch.setattr(generate, "generate", lambda client, k, d, f="": (None, fake_response("refusal")))
     result, errors, responses = generate.run(None, "풀링", DOCS)
     assert (result, errors, len(responses)) == (None, ["거절됨"], 2)
 
 
 def test_log_run_appends_line_with_summed_tokens(tmp_path, monkeypatch):
     monkeypatch.setattr(generate, "RUNS_PATH", tmp_path / "runs" / "generate.jsonl")
-    generate.log_run("풀링", DOCS, OK, [], [fake_response(), fake_response()], 1.23)
-    generate.log_run("풀링", DOCS, None, ["거절됨"], [fake_response("refusal")], 1.0)
+    ok = {"status": "검토 대기", "result": OK, "gate2": [], "evaluations": [], "revised": False, "responses": [fake_response(), fake_response()]}
+    refused = {"status": "게이트 2 실패", "result": None, "gate2": ["거절됨"], "evaluations": [], "revised": False, "responses": [fake_response("refusal")]}
+    generate.log_run("풀링", DOCS, ok, 1.23)
+    generate.log_run("풀링", DOCS, refused, 1.0)
 
     lines = [json.loads(line) for line in generate.RUNS_PATH.read_text(encoding="utf-8").splitlines()]
     assert len(lines) == 2
