@@ -64,3 +64,65 @@ def test_log_run_appends_line_with_summed_tokens(tmp_path, monkeypatch):
     assert lines[0]["tokens"] == {"input": 200, "output": 20, "cache_write": 10, "cache_read": 0}
     assert lines[0]["result"]["question"] == "Q" and lines[0]["prompt_version"] == generate.PROMPT_VERSION
     assert lines[1]["result"] is None and lines[1]["gate2"] == ["거절됨"]
+
+
+def test_check_catches_note_word_and_filled_insufficient():
+    # 받는 사람은 노트를 보지 않는다. 근거 부족인데 칸이 채워져 있으면 섞인 결과다
+    assert generate.check(OK.model_copy(update={"follow_up": "노트에 나온 특징은?"}), DOCS) == ["'노트'라는 말: follow_up"]
+    mixed = OK.model_copy(update={"insufficient": True})
+    assert generate.check(mixed, DOCS) == ["근거 부족인데 칸이 채워짐"]
+
+
+def evaluation(verdict, feedback="두 가지로 줄여라"):
+    judgment = {"verdict": verdict, "reason": "r"}
+    return generate.Evaluation(**{item: judgment for item in generate.ITEMS}, feedback=feedback)
+
+
+def test_evaluation_verdict_order():
+    # 미달이 하나라도 있으면 미달, 그다음 판단 불가, 아니면 통과
+    mixed = evaluation("통과").model_copy(update={"clarity": generate.Judgment(verdict="판단 불가", reason="r")})
+    assert mixed.verdict() == "판단 불가"
+    mixed = mixed.model_copy(update={"difficulty": generate.Judgment(verdict="미달", reason="r")})
+    assert mixed.verdict() == "미달"
+    assert evaluation("통과").verdict() == "통과"
+
+
+def produce_with(monkeypatch, generated, evaluations):
+    # 생성·평가 결과를 순서대로 돌려주고, 생성 때 붙은 피드백을 모은다
+    generated, evaluations, feedbacks = iter(generated), iter(evaluations), []
+
+    def fake_generate(client, k, d, f=""):
+        feedbacks.append(f)
+        return next(generated), fake_response()
+
+    monkeypatch.setattr(generate, "generate", fake_generate)
+    monkeypatch.setattr(generate, "evaluate", lambda client, d, r: (next(evaluations), fake_response()))
+    return generate.produce(None, "풀링", DOCS), feedbacks
+
+
+def test_produce_pass_goes_to_review(monkeypatch):
+    outcome, feedbacks = produce_with(monkeypatch, [OK], [evaluation("통과")])
+    assert (outcome["status"], len(outcome["responses"]), outcome["revised"]) == ("검토 대기", 2, False)
+
+
+def test_produce_regenerates_once_with_feedback(monkeypatch):
+    outcome, feedbacks = produce_with(monkeypatch, [OK, OK], [evaluation("미달"), evaluation("통과")])
+    assert (outcome["status"], len(outcome["responses"]), outcome["revised"]) == ("검토 대기", 4, True)
+    assert feedbacks[0] == "" and "두 가지로 줄여라" in feedbacks[1]
+
+    outcome, _ = produce_with(monkeypatch, [OK, OK], [evaluation("미달"), evaluation("미달")])
+    assert outcome["status"] == "탈락"
+
+
+def test_produce_stops_without_evaluation(monkeypatch):
+    # 근거 부족·게이트 2 실패는 평가자를 부르지 않고, 판단 불가는 재생성하지 않는다
+    insufficient = generate.Generated(quotes=[], question="", answer="", follow_up="", insufficient=True)
+    assert produce_with(monkeypatch, [insufficient], [])[0]["status"] == "근거 부족"
+    assert produce_with(monkeypatch, [BAD, BAD], [])[0]["status"] == "게이트 2 실패"
+    assert produce_with(monkeypatch, [OK], [evaluation("판단 불가")])[0]["status"] == "판단 불가"
+
+
+def test_produce_stops_at_call_budget(monkeypatch):
+    # 게이트 2 재시도가 겹쳐 호출이 MAX_CALLS에 닿으면 평가 전에 멈춘다
+    outcome, _ = produce_with(monkeypatch, [BAD, OK, BAD, OK], [evaluation("미달")])
+    assert (outcome["status"], len(outcome["responses"])) == ("판단 불가", generate.MAX_CALLS)
