@@ -7,7 +7,7 @@ body:
     attributes:
       label: "🏷 배포 버전 / 태그"
       description: "이번 배포의 커밋 태그나 버전 정보를 입력해 주세요."
-      placeholder: "예: v0.4.0 (Phase 4 관리자 승인 페이지 반영)"
+      placeholder: "예: v0.1.0 (평일 메일 발송 시작)"
     validations:
       required: true
   - type: textarea
@@ -15,7 +15,7 @@ body:
     attributes:
       label: "📝 주요 변경 사항"
       description: "이번 배포에 포함된 핵심 기능이나 수정 사항을 요약해 주세요."
-      placeholder: "예: 승인 큐 기능 추가, Prompt Caching 반영, discord.py 봇 연동"
+      placeholder: "예: 근거 루프 추가, 승인된 문제 메일 발송"
     validations:
       required: true
   - type: textarea
@@ -24,11 +24,11 @@ body:
       label: "✅ 배포 전 체크리스트"
       description: "배포 전 반드시 확인해야 할 항목들입니다."
       value: |
-        - [ ] .env / 환경변수가 배포 서버(GCP e2-micro)에 반영됨
-        - [ ] `docker-compose up --build` 로컬에서 정상 기동 확인
-        - [ ] DB 마이그레이션(schema 변경) 여부 확인 및 백업
-        - [ ] 구독자 DB·llm_calls.csv가 이미지에 포함되지 않았는지 확인
-        - [ ] 헬스체크 엔드포인트 정상 응답 확인
+        - [ ] 환경변수가 Railway에 반영됨
+        - [ ] Docker 이미지로 로컬에서 정상 실행 확인
+        - [ ] raw/ 원본 노트·.env가 이미지에 포함되지 않았는지 확인
+        - [ ] 평일 아침 메일 발송 스케줄 확인
+        - [ ] 승인된 문제만 발송되는지 확인
     validations:
       required: true
   - type: textarea

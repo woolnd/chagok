@@ -1,0 +1,22 @@
+[project]
+name = "chagok"
+version = "0.1.0"
+description = "학습 노트로 복습 문제를 만들어 평일 아침 메일로 보내는 에이전트"
+readme = "README.md"
+authors = [
+    { name = "JaeWoong Eum" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=2.8.0",
+    "kiwipiepy>=0.24.1",
+    "langgraph>=1.2.20",
+    "langsmith>=0.14.17",
+]
+
+[project.scripts]
+chagok = "chagok:main"
+
+[build-system]
+requires = ["uv_build>=0.11.29,<0.12.0"]
+build-backend = "uv_build"

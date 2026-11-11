@@ -7,7 +7,7 @@ body:
     attributes:
       label: "🧐 현재 상태 및 문제점"
       description: "어떤 부분의 코드를 왜 수정하려고 하시나요? (가독성, 중복, 복잡도 등)"
-      placeholder: "예: scripts/index.py에 인덱싱·생성·검증 로직이 한 함수에 섞여 있어 테스트가 어렵습니다."
+      placeholder: "예: 문제 생성 노드에 검색·생성·검사 로직이 섞여 있어 단계별 측정이 어렵습니다."
     validations:
       required: true
   - type: textarea
@@ -15,7 +15,7 @@ body:
     attributes:
       label: "🎯 리팩토링 목표"
       description: "어떤 방향으로 개선하고 싶으신가요?"
-      placeholder: "예: 단계별로 함수를 분리하고 각 단계에 대한 단위 테스트를 추가합니다."
+      placeholder: "예: 단계별 노드로 분리해 각 단계 지표를 따로 잴 수 있게 합니다."
     validations:
       required: true
   - type: textarea

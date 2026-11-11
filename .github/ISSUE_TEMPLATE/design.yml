@@ -1,21 +1,21 @@
 name: "🎨 Design"
-description: "디자인 요소 반영"
+description: "메일 형식 디자인 반영"
 labels: ["Design"]
 body:
   - type: textarea
     id: overview
     attributes:
       label: "📌 작업 개요"
-      description: "어떤 디자인 요소를 추가하거나 수정하시나요?"
-      placeholder: "예: 소개 페이지 히어로 섹션 flip-card 애니메이션 수정"
+      description: "메일의 어떤 부분을 추가하거나 수정하시나요?"
+      placeholder: "예: 복습 문제 메일에 노트 출처(파일명·페이지) 표시"
     validations:
       required: true
   - type: textarea
     id: assets
     attributes:
-      label: "🖼 관련 에셋"
-      description: "추가하거나 변경할 에셋/스타일 정보를 적어주세요."
-      placeholder: "예: static/style.css의 --accent 색상 토큰, base.html Tailwind 설정"
+      label: "🖼 관련 파일"
+      description: "변경할 메일 템플릿이나 스타일을 적어주세요."
+      placeholder: "예: 메일 HTML 템플릿, 문제·채점 포인트 배치"
   - type: textarea
     id: tasks
     attributes:
@@ -28,5 +28,5 @@ body:
     id: design-reference
     attributes:
       label: "🙋🏻 참고 자료 (디자인 가이드)"
-      description: "피그마(Figma) 링크나 참고할 디자인 시안이 있다면 첨부해 주세요."
-      placeholder: "Figma 링크 혹은 디자인 스크린샷 드래그"
+      description: "참고할 메일 시안이나 스크린샷이 있다면 첨부해 주세요."
+      placeholder: "시안 링크 혹은 스크린샷 드래그"
