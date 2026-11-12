@@ -1,0 +1,31 @@
+id,concept,answers,memo
+c01,퍼셉트론,2026-10-15_perceptron.md#퍼셉트론 > 1. 퍼셉트론이란,
+c02,XOR 게이트,2026-10-15_perceptron.md#퍼셉트론 > 4. 퍼셉트론의 한계 > XOR 게이트;2026-10-15_perceptron.md#퍼셉트론 > 5. 다층 퍼셉트론,
+c03,시그모이드 함수,2026-10-15_neural_network.md#신경망 > 4. 시그모이드 함수,
+c04,소프트맥스 함수,2026-10-15_neural_network.md#신경망 > 8. 출력층 설계 > 소프트맥스 함수,
+c05,교차 엔트로피 오차,2026-10-17_neural_network_learning.md#신경망 학습 > 4. 손실 함수 > 교차 엔트로피 오차,
+c06,미니배치 학습,2026-10-17_neural_network_learning.md#신경망 학습 > 5. 미니배치 학습,
+c07,모멘텀,2026-10-19_learning_techniques.md#학습 관련 기술들 > 1. 매개변수 갱신 > 모멘텀,
+c08,배치 정규화,2026-10-19_learning_techniques.md#학습 관련 기술들 > 3. 배치 정규화,
+c09,패딩,2026-10-21_cnn.md#합성곱 신경망(CNN) > 2. 합성곱 계층 > 패딩,word_representation의 '정수 인코딩과 패딩'은 다른 뜻
+c10,풀링 계층,2026-10-21_cnn.md#합성곱 신경망(CNN) > 3. 풀링 계층,
+c11,시소러스,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 3. 시소러스,
+c12,TF-IDF,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 8. BoW와 TF-IDF > TF-IDF,
+c13,skip-gram 모델,2026-10-28_word2vec.md#word2vec > 3. word2vec > skip-gram 모델;2026-10-28_word2vec.md#word2vec > 3. word2vec > CBOW와 skip-gram 비교,
+c14,네거티브 샘플링,2026-10-31_word2vec_speedup.md#word2vec 속도 개선 > 3. 네거티브 샘플링,
+c15,퍼플렉서티,2026-11-05_rnn.md#순환 신경망(RNN) > 7. 언어 모델의 평가 > 퍼플렉서티;2026-11-05_rnn.md#순환 신경망(RNN) > 7. 언어 모델의 평가 > 입력 데이터가 여러 개일 때,
+c16,기울기 클리핑,2026-11-09_gated_rnn.md#게이트가 추가된 RNN > 3. 기울기 폭발 대책 > 기울기 클리핑;2026-11-09_gated_rnn.md#게이트가 추가된 RNN > 3. 기울기 폭발 대책 > 노름으로 자르는 이유,
+c17,GRU,2026-11-09_gated_rnn.md#게이트가 추가된 RNN > 7. GRU,
+c18,Truncated SVD,2026-10-26_word_representation.md#자연어와 단어의 분산 표현 > 6. 통계 기반 기법 개선하기 > Truncated SVD,Truncated BPTT와 단어가 겹침
+c19,Truncated BPTT,2026-11-05_rnn.md#순환 신경망(RNN) > 5. BPTT > Truncated BPTT;2026-11-05_rnn.md#순환 신경망(RNN) > 5. BPTT > Truncated BPTT의 미니배치 학습,Truncated SVD와 단어가 겹침
+c20,기억 셀,2026-11-09_gated_rnn.md#게이트가 추가된 RNN > 4. LSTM > 기억 셀,
+c21,가중치 초기화,2026-10-19_learning_techniques.md#학습 관련 기술들 > 2. 가중치의 초깃값,노트 표현은 '초깃값'
+c22,learning rate,2026-10-17_neural_network_learning.md#신경망 학습 > 9. 경사법 > 학습률과 하이퍼파라미터,영어로 검색
+c23,확률적 경사 하강법,2026-10-17_neural_network_learning.md#신경망 학습 > 9. 경사법 > 확률적 경사 하강법;2026-10-19_learning_techniques.md#학습 관련 기술들 > 1. 매개변수 갱신 > 확률적 경사 하강법(SGD);2026-10-19_learning_techniques.md#학습 관련 기술들 > 1. 매개변수 갱신 > SGD의 단점,두 노트
+c24,전이 학습,2026-10-22_deep_learning.md#딥러닝 > 2. 전이 학습;2026-10-31_word2vec_speedup.md#word2vec 속도 개선 > 4. 분산 표현의 활용과 평가 > 전이 학습,두 노트
+c25,과대적합,2026-10-19_learning_techniques.md#학습 관련 기술들 > 4. 과대적합;2026-11-09_gated_rnn.md#게이트가 추가된 RNN > 6. LSTM 개선 > 과대적합과 드롭아웃,두 노트
+c26,드롭아웃,2026-10-19_learning_techniques.md#학습 관련 기술들 > 4. 과대적합 > 드롭아웃;2026-11-09_gated_rnn.md#게이트가 추가된 RNN > 6. LSTM 개선 > 드롭아웃 계층의 위치;2026-11-09_gated_rnn.md#게이트가 추가된 RNN > 6. LSTM 개선 > 변형 드롭아웃;2026-11-09_gated_rnn.md#게이트가 추가된 RNN > 6. LSTM 개선 > 과대적합과 드롭아웃,두 노트
+c27,기울기 소실,2026-11-09_gated_rnn.md#게이트가 추가된 RNN > 2. 기울기 소실과 기울기 폭발의 원인;2026-11-09_gated_rnn.md#게이트가 추가된 RNN > 5. LSTM의 기울기 흐름;2026-10-15_neural_network.md#신경망 > 7. ReLU 함수;2026-10-19_learning_techniques.md#학습 관련 기술들 > 2. 가중치의 초깃값 > 초깃값이 너무 크거나 작으면,여러 노트에 흩어짐
+c28,원핫 표현의 한계,2026-10-28_word2vec.md#word2vec > 2. 추론 기반 기법 > 신경망에서의 단어 처리;2026-10-31_word2vec_speedup.md#word2vec 속도 개선 > 1. 거대한 말뭉치의 문제점;2026-10-31_word2vec_speedup.md#word2vec 속도 개선 > 2. Embedding 계층,두 노트
+c29,ResNet,2026-10-21_cnn.md#합성곱 신경망(CNN) > 5. 대표적인 CNN > ResNet,
+c30,통계 기반과 추론 기반 기법의 차이,2026-10-28_word2vec.md#word2vec > 4. 통계 기반 vs 추론 기반;2026-10-28_word2vec.md#word2vec > 1. 통계 기반 기법의 문제점;2026-10-28_word2vec.md#word2vec > 2. 추론 기반 기법,비교 개념
