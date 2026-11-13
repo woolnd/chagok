@@ -19,6 +19,7 @@
 
 평가 (__main__)
     - eval/concepts.csv 개념 30개로 Recall@1·3·5·10, MRR (RRF 10개, 리랭크 후 3개)
+    - 평가셋을 만들 때의 노트 11개(EVAL_UNTIL까지)만으로 잰다. 노트가 늘어도 같은 조건으로 비교하려고
     - 정답 판정: 조각 id == 정답, 또는 정답이 "조각 id > ..."로 시작 (### 정답은 위 ## 조각이 맞힘)
     - HNSW 결과와 전부 비교(IndexFlatIP) 결과가 겹치는 비율
 """
@@ -32,7 +33,7 @@ import faiss  # 벡터 검색
 from kiwipiepy import Kiwi  # 검색어 형태소 분석
 from sentence_transformers import CrossEncoder, SentenceTransformer  # 리랭커, 검색어 벡터화
 
-from chagok.store import EMBED_MODEL, ROOT, STORE, tokenize
+from chagok.store import EF_SEARCH, EMBED_MODEL, HNSW_M, ROOT, STORE, tokenize
 
 TOP_K = 10
 RRF_K = 60  # RRF 점수 = 1 / (RRF_K + 등수)
@@ -40,6 +41,8 @@ RRF_K = 60  # RRF 점수 = 1 / (RRF_K + 등수)
 RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
 RERANK_KEEP = 3
 RERANK_MAX_LEN = 1024  # 검색어 + 조각 토큰 수 상한 (비교할 때 쓴 값)
+
+EVAL_UNTIL = "2026-11-09"  # 평가셋을 고정할 때 마지막 노트 날짜 (노트 11개)
 
 # BM25 기본값 (보통 쓰는 값)
 BM25_K1 = 1.5  # 같은 단어가 여러 번 나올 때 점수가 얼마나 더 오를지
@@ -183,6 +186,15 @@ if __name__ == "__main__":
     assert rrf([[3, 7, 1], [7, 3, 9]], 10) == [3, 7, 1, 9]
 
     chunks, docs, index = load_store()
+
+    # 평가셋 노트 11개의 조각만 남기고, 그 조각들로 HNSW를 같은 설정으로 다시 만든다
+    keep = [i for i, ch in enumerate(chunks) if ch["date"] <= EVAL_UNTIL]
+    vectors = index.reconstruct_n(0, index.ntotal)[keep]
+    chunks, docs = [chunks[i] for i in keep], [docs[i] for i in keep]
+    index = faiss.IndexHNSWFlat(index.d, HNSW_M, faiss.METRIC_INNER_PRODUCT)
+    index.hnsw.efSearch = EF_SEARCH
+    index.add(vectors)
+
     kiwi = Kiwi()
     model = SentenceTransformer(EMBED_MODEL)
     reranker = CrossEncoder(RERANK_MODEL, max_length=RERANK_MAX_LEN)
@@ -208,14 +220,14 @@ if __name__ == "__main__":
 
     # 2. HNSW vs 전부 비교: 개념마다 상위 TOP_K가 얼마나 겹치나
     exact = faiss.IndexFlatIP(index.d)
-    exact.add(index.reconstruct_n(0, index.ntotal))
+    exact.add(vectors)
     overlaps = []
     for c in concepts:
         hnsw_ids = set(search_vector(c["concept"], model, index, TOP_K))
         exact_ids = set(search_vector(c["concept"], model, exact, TOP_K))
         overlaps.append(len(hnsw_ids & exact_ids) / TOP_K)
 
-    print(f"개념 {n}개, 조각 {len(chunks)}개")
+    print(f"개념 {n}개, 조각 {len(chunks)}개 (노트 {len({ch['file'] for ch in chunks})}개, {EVAL_UNTIL}까지)")
     print(report(f"RRF {TOP_K}개   ", ranks, (1, 3, 5, 10)))
     print(report(f"리랭크 {RERANK_KEEP}개", rerank_ranks, (1, 3)))
     print(f"HNSW vs 전부 비교 겹침 {sum(overlaps) / n:.2f}")
