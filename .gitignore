@@ -1,3 +1,6 @@
 .venv/
 __pycache__/
 .env
+
+# 적재 결과 (uv run python -m chagok.store 로 다시 만듦)
+store/
