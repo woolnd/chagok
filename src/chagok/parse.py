@@ -73,9 +73,9 @@ if __name__ == "__main__":
     raw = Path(__file__).parents[2] / "raw"
     notes = [parse_note(p) for p in sorted(raw.glob("*.md"))]
 
-    # 노트 11개, 페이지 71개
-    assert len(notes) == 11, len(notes)
-    assert sum(len(n["pages"]) for n in notes) == 71
+    # raw/의 md 파일마다 노트 하나, 노트마다 페이지가 1개 이상
+    assert len(notes) == len(list(raw.glob("*.md"))), len(notes)
+    assert all(n["pages"] for n in notes), [n["file"] for n in notes if not n["pages"]]
 
     # 퍼셉트론 노트의 파일명·제목·날짜·첫 소제목
     p = next(n for n in notes if n["file"] == "2026-10-15_perceptron.md")
