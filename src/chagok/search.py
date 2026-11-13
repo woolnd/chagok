@@ -7,16 +7,18 @@
       ▼
     rrf                  두 순위를 등수로 합치기 → 상위 TOP_K 번호
       ▼
-    chunks[번호]         조각 원본으로 바꿔 돌려줌
+    chunks[번호]         조각 원본으로 바꿔 돌려줌        ← search()
+      ▼
+    rerank               리랭커로 다시 정렬 → RERANK_KEEP개만 남김
 
 규칙 (기획서 처음 값)
     - top-k 10
     - BM25(kiwi 형태소) + 벡터, RRF로 합침
     - HNSW ef_search 64 (적재 때 인덱스에 저장됨)
-    - 리랭커는 아직 미정 (정해지면 rrf 뒤에 붙임)
+    - 리랭커 bge-reranker-v2-m3, 3개 남김 (4개 비교 후 결정)
 
 평가 (__main__)
-    - eval/concepts.csv 개념 30개로 Recall@1·3·5·10, MRR
+    - eval/concepts.csv 개념 30개로 Recall@1·3·5·10, MRR (RRF 10개, 리랭크 후 3개)
     - 정답 판정: 조각 id == 정답, 또는 정답이 "조각 id > ..."로 시작 (### 정답은 위 ## 조각이 맞힘)
     - HNSW 결과와 전부 비교(IndexFlatIP) 결과가 겹치는 비율
 """
@@ -28,12 +30,16 @@ from collections import Counter  # 조각 안 단어 개수 세기
 
 import faiss  # 벡터 검색
 from kiwipiepy import Kiwi  # 검색어 형태소 분석
-from sentence_transformers import SentenceTransformer  # 검색어 벡터화
+from sentence_transformers import CrossEncoder, SentenceTransformer  # 리랭커, 검색어 벡터화
 
 from chagok.store import EMBED_MODEL, ROOT, STORE, tokenize
 
 TOP_K = 10
 RRF_K = 60  # RRF 점수 = 1 / (RRF_K + 등수)
+
+RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
+RERANK_KEEP = 3
+RERANK_MAX_LEN = 1024  # 검색어 + 조각 토큰 수 상한 (비교할 때 쓴 값)
 
 # BM25 기본값 (보통 쓰는 값)
 BM25_K1 = 1.5  # 같은 단어가 여러 번 나올 때 점수가 얼마나 더 오를지
@@ -145,6 +151,18 @@ def search(
     return [chunks[i] for i in ids]
 
 
+def rerank(query: str, found: list[dict], reranker: CrossEncoder, keep: int = RERANK_KEEP) -> list[dict]:
+    """리랭커가 (검색어, 조각)을 한 쌍씩 직접 읽고 점수를 매겨 다시 정렬, 상위 keep개만 남긴다.
+
+    BM25·벡터는 검색어와 조각을 따로 보고 비교하지만, 리랭커는 둘을 같이 읽어서 더 정확하다.
+    대신 느려서 RRF로 줄인 10개에만 쓴다.
+    """
+    scores = reranker.predict([(query, chunk["text"]) for chunk in found])
+    order = sorted(range(len(found)), key=lambda i: scores[i], reverse=True)[:keep]
+
+    return [found[i] for i in order]
+
+
 def is_hit(chunk_id: str, answers: list[str]) -> bool:
     """조각이 정답인지. 정답과 같거나, 정답이 이 조각 아래 ### 소제목이면 맞힘."""
     return any(a == chunk_id or a.startswith(chunk_id + " > ") for a in answers)
@@ -167,19 +185,26 @@ if __name__ == "__main__":
     chunks, docs, index = load_store()
     kiwi = Kiwi()
     model = SentenceTransformer(EMBED_MODEL)
+    reranker = CrossEncoder(RERANK_MODEL, max_length=RERANK_MAX_LEN)
 
     with open(ROOT / "eval" / "concepts.csv", encoding="utf-8") as f:
         concepts = list(csv.DictReader(f))
-
-    # 1. Recall@k, MRR (BM25 + 벡터 → RRF)
-    ranks = {}  # 개념 id → 처음 맞힌 등수 (못 맞히면 None)
-    for c in concepts:
-        found = search(c["concept"], kiwi, model, chunks, docs, index)
-        ranks[c["id"]] = first_hit_rank([ch["id"] for ch in found], c["answers"].split(";"))
-
     n = len(concepts)
-    recall = {k: sum(r is not None and r <= k for r in ranks.values()) / n for k in (1, 3, 5, 10)}
-    mrr = sum(1 / r for r in ranks.values() if r) / n
+
+    # 1. Recall@k, MRR: RRF 10개, 리랭크 후 3개
+    ranks = {}  # 개념 id → 처음 맞힌 등수 (못 맞히면 None)
+    rerank_ranks = {}
+    for c in concepts:
+        answers = c["answers"].split(";")
+        found = search(c["concept"], kiwi, model, chunks, docs, index)
+        ranks[c["id"]] = first_hit_rank([ch["id"] for ch in found], answers)
+        kept = rerank(c["concept"], found, reranker)
+        rerank_ranks[c["id"]] = first_hit_rank([ch["id"] for ch in kept], answers)
+
+    def report(name: str, ranks: dict, ks: tuple[int, ...]) -> str:
+        recall = "  ".join(f"R@{k} {sum(r is not None and r <= k for r in ranks.values()) / n:.2f}" for k in ks)
+        mrr = sum(1 / r for r in ranks.values() if r) / n
+        return f"{name}  {recall}  MRR {mrr:.3f}"
 
     # 2. HNSW vs 전부 비교: 개념마다 상위 TOP_K가 얼마나 겹치나
     exact = faiss.IndexFlatIP(index.d)
@@ -191,8 +216,8 @@ if __name__ == "__main__":
         overlaps.append(len(hnsw_ids & exact_ids) / TOP_K)
 
     print(f"개념 {n}개, 조각 {len(chunks)}개")
-    print("RRF  " + "  ".join(f"R@{k} {v:.2f}" for k, v in recall.items()) + f"  MRR {mrr:.3f}")
+    print(report(f"RRF {TOP_K}개   ", ranks, (1, 3, 5, 10)))
+    print(report(f"리랭크 {RERANK_KEEP}개", rerank_ranks, (1, 3)))
     print(f"HNSW vs 전부 비교 겹침 {sum(overlaps) / n:.2f}")
-    misses = [f"{cid}({c}):{ranks[cid] or '-'}" for cid, c in ((c["id"], c["concept"]) for c in concepts)
-              if not ranks[cid] or ranks[cid] > 3]
-    print("3위 밖: " + (", ".join(misses) or "없음"))
+    misses = [f"{c['id']}({c['concept']}):{rerank_ranks[c['id']] or '-'}" for c in concepts if rerank_ranks[c["id"]] != 1]
+    print("리랭크 후 1등 아님: " + (", ".join(misses) or "없음"))
