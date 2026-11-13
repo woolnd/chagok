@@ -21,7 +21,6 @@ from chagok.parse import parse_note
 
 def make_header(title: str, date: str, heading: str) -> str:
     """조각 맨 앞에 붙일 머리말. 예: "퍼셉트론 | 2026-10-15 | 1. 퍼셉트론이란" """
-    # TODO
     return title + " | " + date + " | " + heading
 
 
@@ -35,7 +34,7 @@ def make_chunk(note: dict, page: dict) -> dict:
         "page":  페이지 번호,
         "date":  배운 날짜,
         "topic": 주제 (노트 제목),
-        "kind":  성격 (이론/실습/질문 — 결정 필요),
+        "kind":  성격 (이론/실습/질문, 지금은 "이론"으로 고정),
     }
     """
 
