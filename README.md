@@ -67,3 +67,22 @@ RRF: 두 순위를 등수로 합침 → 상위 10개 조각
 평가: `uv run python -m chagok.search`
 - `eval/concepts.csv` 개념 30개로 Recall@k, MRR: RRF 10개, 리랭크 후 3개 (정답이 `###` 소제목이면 그 위 `##` 조각을 찾으면 맞힘)
 - HNSW 결과가 전부 비교한 결과와 얼마나 겹치는지
+
+## 문제 생성
+검색으로 남은 조각 3개로 복습 문제 하나를 만든다. `src/chagok/generate.py`
+
+```
+개념 + 조각 3개 + 내가 승인한 문제 예시
+  ▼
+Claude Haiku 5.5 → 질문 · 모범 답안 · 채점 포인트
+```
+
+- 모범 답안은 노트 조각에 있는 내용만 쓴다. 노트에 없는 배경 지식(연도, 인물 등)은 넣지 않는다.
+- 예시는 `eval/review_examples.md`에서 "승인"한 문제만 쓴다. 지금 만들 개념과 같은 예시는 빼서 베끼지 않게 한다.
+- 출력 형식을 정해 두어(`Question`) 채점 포인트 칸이 항상 채워진다.
+- 생성 모델은 싸게 여러 번 돌려 보려고 Haiku로 시작했다. 고도화 때 Sonnet·Opus와 승인율로 비교한다.
+
+실행: `.env`에 `ANTHROPIC_API_KEY`를 넣고
+```bash
+uv run --env-file .env python -m chagok.generate "기울기 소실" 패딩   # 개념을 안 주면 평가셋 앞 3개
+```
