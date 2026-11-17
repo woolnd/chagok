@@ -109,7 +109,11 @@ def format_examples(examples: list[dict], concept: str) -> str:
 
 
 def generate(
-    concept: str, chunks: list[dict], examples: list[dict], client: anthropic.Anthropic
+    concept: str,
+    chunks: list[dict],
+    examples: list[dict],
+    client: anthropic.Anthropic,
+    feedback: str = "",
 ) -> Question:
     """개념 + 조각 → Claude → Question.
 
@@ -122,6 +126,9 @@ def generate(
         f"[노트 조각]\n{format_chunks(chunks)}\n\n"
         f'위 노트 조각만 근거로 "{concept}" 문제를 하나 만들어라.'
     )
+
+    if feedback:
+        user += f"\n\n[이전 문제가 탈락한 이유]\n{feedback}\n위 이유를 고쳐서 다시 만들어라."
 
     response = client.messages.parse(
         model=MODEL,
@@ -150,12 +157,12 @@ if __name__ == "__main__":
     from chagok.search import RERANK_MAX_LEN, RERANK_MODEL, load_store, rerank, search
     from chagok.store import EMBED_MODEL
 
-    # 1. 예시: 승인 13개, 같은 개념은 빠지고 채점 포인트는 " / "로 이어짐
+    # 1. 예시: 승인 12개, 같은 개념은 빠지고 채점 포인트는 " / "로 이어짐
     examples = load_examples(EXAMPLES)
-    assert len(examples) == 13, len(examples)
+    assert len(examples) == 12, len(examples)
     text = format_examples(examples, "퍼셉트론")
     assert "· 퍼셉트론\n" not in text and text.startswith("예시 1 · ")
-    assert text.count("예시 ") == 12 and "['" not in text
+    assert text.count("예시 ") == 11 and "['" not in text
 
     if sys.argv[1:]:
         concepts = sys.argv[1:]
@@ -171,7 +178,9 @@ if __name__ == "__main__":
     client = anthropic.Anthropic()
 
     for concept in concepts:
-        found = rerank(concept, search(concept, kiwi, model, chunks, docs, index), reranker)
+        found = rerank(
+            concept, search(concept, kiwi, model, chunks, docs, index), reranker
+        )
         q = generate(concept, found, examples, client)
         assert q.question and q.answer and q.points and all(q.points), q
 
