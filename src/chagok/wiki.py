@@ -11,7 +11,8 @@
 
 흐름 (쓰기: 문제 만들 때)
     pick_concept         목차에서 오래 나오지 않은 개념 하나 (한 번도 안 나온 것부터)
-    load_page            개념 페이지 → 검색 보강(전체 그림) + 채점 기준(핵심 포인트)
+    wiki_page            개념 페이지 글 (WIKI_ON이 False면 빈 글) → generate의 page
+                         검색 보강(전체 그림) + 채점 기준(핵심 포인트, 꼭 물어야 할 것)
     mark_asked           문제를 냈으면 목차의 날짜를 오늘로
 
 규칙 (기획서 처음 값)
@@ -274,6 +275,13 @@ def save_page(concept: Concept, page: Page) -> None:
 
     WIKI.mkdir(exist_ok=True)
     page_path(concept.name).write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def wiki_page(name: str) -> str:
+    """생성에 넘길 개념 페이지. 위키를 껐거나(WIKI_ON) 페이지가 없으면 빈 문자열 → "검색만"."""
+    if not WIKI_ON or not page_path(name).exists():
+        return ""
+    return load_page(name)
 
 
 def load_page(name: str) -> str:

@@ -112,19 +112,19 @@ def feedback(verdict: Verdict) -> str:
 
 
 def make_question(
-    concept: str, chunks: list[dict], examples: list[dict], client: anthropic.Anthropic
+    concept: str, chunks: list[dict], examples: list[dict], client: anthropic.Anthropic, page: str = ""
 ) -> tuple[Question | None, list[Verdict]]:
     """생성 → 검사 → 탈락이면 feedback을 넣어 다시 생성. 최대 MAX_RETRIES번 다시 만든다.
 
     출력: (통과한 문제 또는 None(버림), 시도마다의 Verdict 목록)
       - Verdict 목록은 "다시 만든 비율" 같은 운영 지표용
-      - generate에 feedback 인자가 필요함 (아래 참고)
+      - page: 위키 개념 페이지 글. 생성에만 넘기고, 검사는 노트 조각만 본다
     """
     verdicts = []
     reason = ""
 
     for _ in range(MAX_RETRIES + 1):
-        question = generate(concept, chunks, examples, client, feedback=reason)
+        question = generate(concept, chunks, examples, client, feedback=reason, page=page)
         verdict = check(question, chunks, client)
         verdicts.append(verdict)
         if verdict.passed:

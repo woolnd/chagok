@@ -114,14 +114,24 @@ def generate(
     examples: list[dict],
     client: anthropic.Anthropic,
     feedback: str = "",
+    page: str = "",
 ) -> Question:
     """개념 + 조각 → Claude → Question.
 
-    - system=SYSTEM, user 메시지 = 개념 + format_examples + format_chunks
+    - system=SYSTEM, user 메시지 = (개념 페이지) + format_examples + format_chunks
+    - page: 위키 개념 페이지 글 (wiki.wiki_page). 비어 있으면 위키 없이 "검색만"
+      전체 그림과 꼭 물어야 할 것(핵심 포인트)으로만 쓰고, 근거는 노트 조각에서만
     - client.messages.parse(..., output_format=Question) → response.parsed_output
     - stop_reason이 "refusal"이나 "max_tokens"면 에러로 멈춘다
     """
-    user = (
+    user = ""
+    if page:
+        user += (
+            f"[개념 페이지]\n{page}\n"
+            "개념 페이지는 전체 그림을 보는 용도다. 핵심 포인트는 이 문제에서 꼭 물어야 할 것으로 참고한다. "
+            "모범 답안의 근거는 아래 노트 조각에서만 가져온다.\n\n"
+        )
+    user += (
         f"[내가 승인한 문제 예시]\n{format_examples(examples, concept)}\n\n"
         f"[노트 조각]\n{format_chunks(chunks)}\n\n"
         f'위 노트 조각만 근거로 "{concept}" 문제를 하나 만들어라.'
