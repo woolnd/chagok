@@ -14,6 +14,7 @@
     wiki_page            개념 페이지 글 (WIKI_ON이 False면 빈 글) → generate의 page
                          검색 보강(전체 그림) + 채점 기준(핵심 포인트, 꼭 물어야 할 것)
     mark_asked           문제를 냈으면 목차의 날짜를 오늘로
+    mark_skipped         검색 루프가 "개념 아님"으로 보면 목차에 "x" → 다시 고르지 않음 (주말 검토에서 지우면 되살아남)
 
 규칙 (기획서 처음 값)
     - raw/ 원본은 읽기만 한다. 문제의 근거는 항상 원문 조각에서 가져온다 (위키는 전체 그림)
@@ -374,9 +375,18 @@ def build(
     return list(pages)
 
 
+SKIP = "x"  # 목차 날짜 칸: 개념 아님으로 빠진 개념
+
+
 def pick_concept(index: dict[str, str]) -> str:
-    """오래 나오지 않은 개념 하나. "-"(한 번도 안 냄)가 가장 오래된 것으로 친다."""
-    return min(index, key=lambda name: index[name])
+    """오래 나오지 않은 개념 하나. "-"(한 번도 안 냄)가 가장 오래된 것으로 친다. "x"는 고르지 않는다."""
+    names = [name for name in index if index[name] != SKIP]
+    return min(names, key=lambda name: index[name])
+
+
+def mark_skipped(name: str) -> None:
+    """검색 루프가 개념이 아니라고 본 개념을 목차에서 "x"로. 페이지는 지우지 않는다."""
+    mark_asked(name, SKIP)
 
 
 def mark_asked(name: str, date: str) -> None:
@@ -404,6 +414,8 @@ if __name__ == "__main__":
     assert pick_concept(load_index()) == "XOR 게이트"  # 한 번도 안 낸 것부터
     mark_asked("XOR 게이트", "2026-11-21")
     assert pick_concept(load_index()) == "패딩 (CNN)"  # 그다음 가장 오래된 날짜
+    mark_skipped("패딩 (CNN)")
+    assert pick_concept(load_index()) == "퍼셉트론"  # "x"는 고르지 않음
     assert page_path("입력/출력").name == "입력-출력.md"
     WIKI, INDEX = real_wiki, real_index
 

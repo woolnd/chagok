@@ -27,11 +27,14 @@ MAX_RETRIES = 2  # 처음 1번 + 다시 찾기 2번 = 최대 3번 검색
 
 # 판단 지시문 초안. 생성·검사 지시문과 따로 둔다
 RETRIEVE_SYSTEM = """너는 복습 문제를 만들기 전에 노트 조각을 살펴보는 검토자다.
-개념 하나와 검색으로 찾아온 노트 조각들을 보고 두 가지를 판단한다.
+개념 하나와 검색으로 찾아온 노트 조각들을 보고 세 가지를 판단한다.
 노트 조각은 "출처:" 줄로 시작하는 덩어리 하나가 한 개다. 안의 ### 소제목으로 나누지 말고, 조각 수만큼만 판정하며, id는 출처를 그대로 쓴다.
 
 1. 조각마다: 이 개념을 설명하는 내용이 들어 있는가. 이름만 스치듯 나오면 관련 없음이다.
 2. 전체: 관련 있는 조각만으로 이 개념의 서술형 문제 하나와 모범 답안을 노트 내용만으로 쓸 수 있는가.
+3. 개념인가: 이 이름이 서술형 문제 하나를 낼 만한 독립된 개념인가. 다른 개념을 설명하는 중에 나오는 부품·용어면 아니다.
+   예: "긍정적 예", "점수", "<eos>"는 개념이 아니다. "임계값", "패딩"은 개념이다.
+   개념이 아니면 충분하지 않은 것으로 보고, 새 검색어는 비운다.
 
 충분하지 않으면 무엇이 빠졌는지 짧게 쓰고, 노트에서 그 내용을 찾을 새 검색어를 하나 제안한다.
 새 검색어는 노트에 나올 법한 용어로, 개념 이름을 다르게 부르거나 더 구체적으로 좁힌 것이다."""
@@ -51,6 +54,7 @@ class Judgment(BaseModel):
     enough: bool  # 문제를 만들 만큼 충분한가
     missing: str  # 빠진 내용 (충분하면 빈 문자열)
     new_query: str  # 다시 찾을 검색어 (충분하면 빈 문자열)
+    is_concept: bool  # 문제 하나를 낼 만한 독립된 개념인가 (아니면 다시 찾지 않음)
 
     @property
     def precision(self) -> float:
@@ -99,7 +103,10 @@ def retrieve(
     - find(검색어) → 조각 3개. search + rerank를 묶은 함수를 밖에서 넘겨받는다
     - 판단은 항상 원래 개념(concept)으로 한다. 바뀌는 건 검색어뿐
 
-    출력: (충분한 조각 또는 None(노트 부족), 시도마다 (검색어, Judgment) 목록)
+    - 개념이 아니라고 판단하면(is_concept False) 다시 찾지 않고 바로 None
+      → 부른 쪽은 tries[-1][1].is_concept로 "노트 부족"과 "개념 아님"을 구분 (개념 아님이면 wiki.mark_skipped)
+
+    출력: (충분한 조각 또는 None(노트 부족 / 개념 아님), 시도마다 (검색어, Judgment) 목록)
     """
     tries = []
     query = concept
@@ -109,9 +116,11 @@ def retrieve(
         judgement = judge(concept, found, client)
         tries.append((query, judgement))
 
-        if judgement.enough:
+        if judgement.enough and judgement.is_concept:
             return (found, tries)
-        query = judgement.new_query
+        if not judgement.is_concept:
+            return None, tries
+        query = judgement.new_query.strip() or concept  # 새 검색어를 비워 보내면 빈 검색이 되지 않게
     return None, tries
 
 
@@ -131,7 +140,7 @@ if __name__ == "__main__":
 
     # precision은 API 없이 먼저 확인
     yes, no = ChunkJudge(id="a", relevant=True), ChunkJudge(id="b", relevant=False)
-    assert Judgment(chunks=[yes, yes, no], enough=True, missing="", new_query="").precision == 2 / 3
+    assert Judgment(chunks=[yes, yes, no], enough=True, missing="", new_query="", is_concept=True).precision == 2 / 3
 
     chunks, docs, index = load_store()
     kiwi = Kiwi()
@@ -147,17 +156,20 @@ if __name__ == "__main__":
     else:
         with open(ROOT / "eval" / "concepts.csv", encoding="utf-8") as f:
             concepts = list(csv.DictReader(f))
-        concepts += [{"concept": "GAN", "answers": ""}, {"concept": "멀티헤드 어텐션", "answers": ""}]
+        concepts += [{"concept": n, "answers": ""} for n in ["GAN", "멀티헤드 어텐션", "긍정적 예", "점수", "임계값"]]
 
     first_precisions = []
-    counts = {"충분": 0, "다시 찾음": 0, "노트 부족": 0}
+    counts = {"충분": 0, "다시 찾음": 0, "노트 부족": 0, "개념 아님": 0}
     gold_seen = gold_relevant = 0
     for c in concepts:
         found, tries = retrieve(c["concept"], find, client)
         assert 1 <= len(tries) <= MAX_RETRIES + 1
         first = tries[0][1]
         first_precisions.append(first.precision)
-        result = "노트 부족" if found is None else "충분" if len(tries) == 1 else "다시 찾음"
+        if found is None:
+            result = "노트 부족" if tries[-1][1].is_concept else "개념 아님"
+        else:
+            result = "충분" if len(tries) == 1 else "다시 찾음"
         counts[result] += 1
 
         # 평가셋 정답 조각이 처음 찾은 조각에 있으면, AI가 그걸 관련 있음으로 봤는지
@@ -171,7 +183,8 @@ if __name__ == "__main__":
             print(f"\n=== {c['concept']} → {result} (정밀도 {first.precision:.2f})")
             for query, j in tries:
                 marks = " ".join("O" if ch.relevant else "X" for ch in j.chunks)
-                print(f"  검색어 {query!r}: [{marks}] {'충분' if j.enough else '부족: ' + j.missing}")
+                state = "개념 아님" if not j.is_concept else "충분" if j.enough else "부족: " + j.missing
+                print(f"  검색어 {query!r}: [{marks}] {state}")
 
     n = len(concepts)
     print(f"\n개념 {n}개 · 첫 검색 문맥 정밀도 평균 {sum(first_precisions) / n:.2f}")
