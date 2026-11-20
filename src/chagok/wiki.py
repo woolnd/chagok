@@ -3,6 +3,7 @@
 흐름 (만들기: 새 노트가 생기면 적재 다음에)
     raw/ 노트 하나의 조각들
       │ extract_concepts   AI가 개념 이름 + 출처(조각 id)를 뽑음 → 출처가 실제 조각 id인지 코드로 확인
+      │ tidy_concepts      전체 목록을 한 번에 보고 같은 개념을 하나로 합침 (빼기는 하지 않음)
       │ write_page         개념마다 출처 조각만 보고 AI가 정의·핵심 포인트·관련 개념을 씀
       │ save_page          wiki/{개념}.md 로 저장
       ▼
@@ -21,6 +22,7 @@
     - 켜고 끌 수 있다 (WIKI_ON). "검색만" vs "위키 + 검색"을 승인율로 비교하려고
 """
 
+import re  # 소제목 꺼내기
 from pathlib import Path  # 페이지 경로
 
 import anthropic  # Claude API
@@ -66,6 +68,33 @@ class ConceptList(BaseModel):
     concepts: list[Concept]
 
 
+# 정리 지시문 초안. 합치기만 한다 (개념이 아닌 용어는 문제 만들 때 걸러짐)
+TIDY_SYSTEM = """너는 학습 노트에서 뽑은 개념 목록을 정리하는 정리자다.
+목록 전체를 한 번에 보고, 다른 개념과 하나로 합쳐야 할 개념만 골라 into에 합칠 개념 이름을 목록에서 그대로 쓴다.
+그대로 둘 개념은 쓰지 않는다. 개념을 빼지 않는다.
+
+합치는 경우
+- 같은 개념인데 표기만 다른 경우: 한글/영어, 약어, 띄어쓰기, 붙임표. 예: "skip 연결" → "스킵 연결", "bag-of-words" → "BoW"
+- 노트에서 따로 설명하지 않고 다른 개념의 일부로만 나오는 경우. 예: "자연어" → "자연어 처리"
+
+합치지 않는 경우
+- 관련만 있는 다른 개념. 예: LSTM과 RNN, CBOW 모델과 skip-gram 모델, L1 정규화와 L2 정규화
+- 노트에서 따로 설명하는 개념은 다른 개념의 일부여도 합치지 않는다. 예: Truncated SVD와 특잇값분해
+
+[이미 있는 개념]은 바꾸지 않는다. 새 개념을 그쪽으로 합치는 것은 된다."""
+
+
+class Change(BaseModel):
+    """합치기 하나. 목록에 없는 개념은 그대로 둔다."""
+
+    name: str  # 합칠 개념
+    into: str  # 합쳐질 개념 이름
+
+
+class Tidy(BaseModel):
+    changes: list[Change]
+
+
 class Page(BaseModel):
     """개념 페이지 내용. 출처는 Concept.sources를 그대로 쓴다 (AI가 쓰지 않음)."""
 
@@ -109,6 +138,70 @@ def extract_concepts(
         if c.sources:
             concepts.append(c)
     return concepts
+
+
+def headings(concept: Concept, chunks: list[dict]) -> list[str]:
+    """개념 출처 조각의 ## 소제목(조각 id 끝)과 ### 소제목(본문)."""
+    found = []
+    for chunk in chunks:
+        if chunk["id"] in concept.sources:
+            found.append(chunk["id"].split(" > ", 1)[1])
+            found += re.findall(r"^### (.+)", chunk["text"], re.M)
+    return found
+
+
+def tidy_concepts(
+    merged: dict[str, Concept], existing: list[str], chunks: list[dict], client: anthropic.Anthropic
+) -> tuple[dict[str, Concept], list[str]]:
+    """새 개념 목록 전체를 AI에 한 번 보여주고, 같은 개념을 하나로 합친다. 빼지는 않는다.
+
+    - existing: 목차에 이미 있는 이름. 바꾸지 않고, 합칠 대상으로만 쓴다
+    - into가 목록에 없거나 자기 자신이면 그 판단은 버림. A → B → C 처럼 이어지면 C로, 돌고 돌면 그대로
+    출력: (정리된 새 개념, 합친 내역을 사람이 읽을 글로)
+    """
+    lines = [f"- {name} | 출처 소제목: {', '.join(headings(c, chunks))}" for name, c in merged.items()]
+    user = (
+        f"[이미 있는 개념]\n{', '.join(existing) or '없음'}\n\n"
+        f"[새 개념]\n" + "\n".join(lines)
+    )
+    response = client.messages.parse(
+        model=WIKI_MODEL,
+        max_tokens=MAX_TOKENS,
+        system=TIDY_SYSTEM,
+        messages=[{"role": "user", "content": user}],
+        output_format=Tidy,
+    )
+    if response.stop_reason in ("refusal", "max_tokens"):
+        raise RuntimeError(f"개념 정리 실패 ({response.stop_reason})")
+
+    targets = set(merged) | set(existing)
+    into = {}  # 이름 → 합칠 이름
+    for ch in response.parsed_output.changes:
+        if ch.name in merged and ch.into in targets and ch.into != ch.name:
+            into[ch.name] = ch.into
+
+    def final(name: str) -> str:
+        """A → B → C 를 따라가 마지막 이름. 돌고 돌면 처음 이름(그대로 둠)."""
+        start, seen = name, {name}
+        while name in into:
+            name = into[name]
+            if name in seen:
+                return start
+            seen.add(name)
+        return name
+
+    ends = {name: final(name) for name in into}
+    tidied = {name: c for name, c in merged.items() if ends.get(name, name) == name}
+    log = []
+    for name, end in ends.items():
+        if end == name:
+            continue
+        if end in tidied:
+            tidied[end].sources += [s for s in merged[name].sources if s not in tidied[end].sources]
+            log.append(f"합침: {name} → {end}")
+        else:  # 이미 있는 개념으로 합침. ponytail: 그 페이지 출처는 그대로 (주간 점검에서)
+            log.append(f"합침: {name} → {end} (이미 있는 개념)")
+    return tidied, log
 
 
 def write_page(
@@ -241,16 +334,36 @@ def build(
             else:
                 merged[c.name] = c
 
-    # 2. 목차에 없는 개념만 페이지 쓰기
+    # 2. 정리: 같은 개념 합치기
+    merged = {name: c for name, c in merged.items() if name not in index}
+    if merged:
+        merged, log = tidy_concepts(merged, list(index), chunks, client)
+        print("\n".join(log) or "정리할 것 없음")
+
+    # 3. 목차에 없는 개념만 페이지 쓰기
     # ponytail: 이미 있는 개념에 새 노트 출처가 생겨도 페이지는 그대로. 주간 점검에서 다룸
-    new = [c for name, c in merged.items() if name not in index]
+    # 핵심 포인트가 0개면 그 개념만 건너뜀: 노트에 설명이 거의 없어 문제를 낼 수 없음
+    new = list(merged.values())
     names = list(index) + [c.name for c in new]
+    pages, skipped = {}, []
     for c in new:
-        save_page(c, write_page(c, chunks, names, client))
+        page = write_page(c, chunks, names, client)
+        if not page.points:
+            skipped.append(c.name)
+            print(f"건너뜀: {c.name} (핵심 포인트 0개)")
+            continue
+        save_page(c, page)
+        pages[c.name] = (c, page)
         index[c.name] = "-"
         save_index(index)  # 페이지마다 저장: 중간에 멈춰도 만든 만큼은 목차에 남게
 
-    return [c.name for c in new]
+    # 건너뛴 개념으로 가는 관련 개념 링크는 지움 (먼저 쓴 페이지가 가리킬 수 있어서)
+    for c, page in pages.values():
+        if set(page.related) & set(skipped):
+            page.related = [r for r in page.related if r not in skipped]
+            save_page(c, page)
+
+    return list(pages)
 
 
 def pick_concept(index: dict[str, str]) -> str:
@@ -269,7 +382,7 @@ if __name__ == "__main__":
     # 1. load_index / save_index / pick_concept / mark_asked (API 없이, 임시 폴더)
     # 2. 노트로 build → wiki/ 에 페이지·목차. 출처가 실제 조각 id인지, 관련 개념이 목차에 있는지
     # 실행: uv run --env-file .env python -m chagok.wiki [노트 파일 이름 ...]
-    #       노트를 안 주면 raw/ 전체 (이미 목차에 있는 개념은 건너뜀)
+    #       노트를 안 주면 아직 위키 출처에 없는 노트만 (다시 돌려도 이미 만든 노트는 다시 뽑지 않게)
     import sys
     import tempfile
 
@@ -286,8 +399,23 @@ if __name__ == "__main__":
     assert page_path("입력/출력").name == "입력-출력.md"
     WIKI, INDEX = real_wiki, real_index
 
+    # 정리 적용 (AI 응답을 가짜로): 합치기, 없는 대상이면 무시, 순환은 그대로
+    from types import SimpleNamespace
+
+    src = {"스킵 연결": "n#t > 1. 스킵 연결", "skip 연결": "n#t > 2. skip 연결", "긍정적 예": "n#t > 4. 네거티브 샘플링",
+           "가중치": "n#t > 5. 가중치", "A": "n#t > 6. a", "B": "n#t > 7. b"}
+    fake = [Change(name="skip 연결", into="스킵 연결"), Change(name="가중치", into="없는 개념"),
+            Change(name="A", into="B"), Change(name="B", into="A")]
+    fake_client = SimpleNamespace(messages=SimpleNamespace(parse=lambda **_: SimpleNamespace(
+        stop_reason="end_turn", parsed_output=Tidy(changes=fake))))
+    tidied, _ = tidy_concepts({n: Concept(name=n, sources=[s]) for n, s in src.items()}, [],
+                              [{"id": s, "text": ""} for s in src.values()], fake_client)
+    assert sorted(tidied) == ["A", "B", "가중치", "긍정적 예", "스킵 연결"], sorted(tidied)
+    assert len(tidied["스킵 연결"].sources) == 2
+
     chunks, _, _ = load_store()
-    notes = sys.argv[1:] or sorted({c["file"] for c in chunks})
+    done = {s.split("#")[0] for name in load_index() for s in load_page(name).split("## 출처\n")[1].split("- ") if s.strip()}
+    notes = sys.argv[1:] or sorted({c["file"] for c in chunks} - done)
     added = build(notes, chunks, anthropic.Anthropic())
 
     index = load_index()
@@ -297,7 +425,7 @@ if __name__ == "__main__":
         assert text.startswith(f"# {name}\n"), name
         sources = text.split("## 출처\n")[1].split("\n")
         assert all(s[2:] in ids for s in sources if s), (name, sources)
-        related = text.split("## 관련 개념\n")[1].split("\n\n")[0].split("\n")
+        related = text.split("## 관련 개념\n")[1].split("\n## 출처")[0].strip().split("\n")
         assert all(r[4:-2] in index for r in related if r), (name, related)
 
     print(f"노트 {len(notes)}개 → 새 개념 {len(added)}개, 목차 {len(index)}개")
