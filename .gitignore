@@ -6,3 +6,6 @@ __pycache__/
 store/
 .DS_Store
 .obsidian/
+
+# 문제 표·멈춘 흐름 (다시 만들 수 없는 기록)
+data/
