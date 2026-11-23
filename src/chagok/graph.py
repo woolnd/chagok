@@ -86,7 +86,6 @@ class State(TypedDict, total=False):
     review: dict  # 내 검토 결과 {"ok": bool, "reason": str}
     enough: bool  # 검색 루프: 문제를 만들 만큼 충분한가 (judge_가 채움)
     passed: bool  # 근거 루프: 검사를 통과했나 (check_가 채움)
-    thread: str
 
 
 def open_db() -> sqlite3.Connection:
