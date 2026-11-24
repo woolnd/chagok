@@ -62,6 +62,7 @@
 | 검색 | HNSW ef_search | 64 | 32, 128 |
 | 검색 | HNSW M | 16 | 32 |
 | 생성 | 생성 모델 | Claude Haiku 5.5 (claude-haiku-5-5) | Claude Sonnet 5.5, Claude Opus 5.5 |
+| 채점 | 채점 AI | Claude Haiku 5.5 (claude-haiku-5-5) | Jev (jev-latest) |
 
 - 노트가 md라 "페이지" = `##` 섹션 하나, 페이지 번호 = 그 섹션의 순번. "소제목 단위" = `###` 단위.
 
