@@ -163,3 +163,24 @@ search → judge ─ 충분 ──────────▶ generate → check
 실행 (주말에 한 번): `uv run --env-file .env python -m chagok.graph [개수, 기본 5]`
 - 만든 뒤 하나씩 보여주고 `a` 승인 / `r` 반려(사유: 근거 없음, 애매함, 너무 쉬움, 중복, 기타) / `s` 나중에
 - 개수 `0`이면 만들지 않고 남은 검토 대기만 검토
+
+## 메일 발송
+평일 아침마다 승인된 문제 하나를 메일로 보낸다. State를 쓰지 않고 따로 돈다. `src/chagok/mail.py`
+
+```
+data/chagok.db → 승인 + 아직 안 보낸 문제 중 가장 오래된 것 하나 → HTML 메일 → Resend로 보내기 → 보낸 날 기록
+```
+
+- 내가 승인한 문제만 나간다. 보낼 문제가 없으면 보내지 않는다.
+- 한 번 실행에 한 통. "평일 아침"은 실행하는 쪽(cron)이 정한다.
+- 보내다 실패하면 보낸 날을 기록하지 않아 다음 실행에서 같은 문제를 다시 보낸다.
+- 메일: 개념·노트 태그 → "1분간 떠올려 보세요" → 질문 → 여백("↓ 내려서 답 확인") → 모범 답안·채점 포인트·출처
+  - 메일 앱은 자바스크립트를 막아서 답 펼치기 버튼 대신 여백으로 답을 첫 화면 밖으로 민다
+  - 스타일은 태그마다 직접(inline), 레이아웃은 table. AI가 만든 글은 `html.escape`
+- 발송: Resend API. 도메인 인증 전이라 보내는 주소는 `onboarding@resend.dev`, 받는 사람은 Resend 계정 이메일만
+
+설정 (`.env`): `RESEND_API_KEY`, `MAIL_TO` (받는 사람, 쉼표로 여러 명)
+
+실행:
+- `uv run --env-file .env python -m chagok.mail` 다음 문제 하나 보내기
+- `uv run --env-file .env python -m chagok.mail --test` 예시 문제로 시험 발송 (DB는 건드리지 않음)
