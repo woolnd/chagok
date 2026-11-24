@@ -81,6 +81,7 @@ class State(TypedDict, total=False):
     search_tries: int  # 검색 다시 한 횟수
     generate_tries: int  # 생성 다시 한 횟수
     result: str  # 끝난 이유: 대기 / 승인 / 반려 / 노트 부족 / 개념 아님 / 버림
+    sources: list[str]  # 출처 조각 id (검색 판단에서 관련 있다고 본 것, 메일에 씀)
     thread: str  # 그래프 thread_id = "개념#날짜" (같은 개념이 다른 주에 다시 나와도 섞이지 않게)
     qid: int  # DB 문제 번호 (save 뒤)
     review: dict  # 내 검토 결과 {"ok": bool, "reason": str}
@@ -95,7 +96,8 @@ def open_db() -> sqlite3.Connection:
         id INTEGER PRIMARY KEY, thread TEXT (그래프 thread_id = 개념),
         concept, question, answer, points (" / "로 이은 글),
         status TEXT (대기 / 승인 / 반려), reason TEXT (반려 사유),
-        created TEXT, reviewed TEXT, sent TEXT (메일 보낸 날, mail.py가 채움)
+        created TEXT, reviewed TEXT, sent TEXT (메일 보낸 날, mail.py가 채움),
+        sources TEXT (출처 조각 id, 줄바꿈으로 이음. 메일에 "어느 노트 어느 소제목"으로)
     - check_same_thread=False: 그래프 노드(save·review)가 다른 스레드에서 이 연결을 쓰기 때문
     - 멈춘 흐름 저장소(SqliteSaver)는 같은 파일을 연결을 따로 열어 쓴다 (build_graph)
     """
@@ -111,11 +113,15 @@ def open_db() -> sqlite3.Connection:
             points TEXT,
             status TEXT,
             reason TEXT,
-            created TEXT, 
-            reviewed TEXT, 
-            sent TEXT
-            )    
+            created TEXT,
+            reviewed TEXT,
+            sent TEXT,
+            sources TEXT
+            )
         """)
+    # 예전에 만든 DB에는 sources 칸이 없어서 붙여 준다 (CREATE TABLE IF NOT EXISTS는 칸을 안 더함)
+    if "sources" not in {row[1] for row in conn.execute("PRAGMA table_info(questions)")}:
+        conn.execute("ALTER TABLE questions ADD COLUMN sources TEXT")
     return conn
 
 
@@ -156,7 +162,10 @@ def build_graph(
             mark_skipped(s["concept"])
             return {"enough": False, "result": "개념 아님"}
         if j.enough:
-            return {"enough": True}
+            # 출처: 검색 판단에서 관련 있다고 본 조각만 (없으면 찾은 조각 전부)
+            relevant = {c.id for c in j.chunks if c.relevant}
+            ids = [ch["id"] for ch in s["chunks"]]
+            return {"enough": True, "sources": [i for i in ids if i in relevant] or ids}
         tries = s.get("search_tries", 0)
         if tries >= RETRIEVE_RETRIES:
             return {"enough": False, "result": "노트 부족"}
@@ -197,8 +206,8 @@ def build_graph(
         """검사를 통과한 문제를 DB에 "대기"로 넣는다. thread = 이 흐름의 이름표 (review가 이걸로 이어감)."""
         q = s["question"]
         cur = conn.execute(
-            "INSERT INTO questions (thread, concept, question, answer, points, status, created) "
-            "VALUES (?, ?, ?, ?, ?, '대기', ?)",
+            "INSERT INTO questions (thread, concept, question, answer, points, status, created, sources) "
+            "VALUES (?, ?, ?, ?, ?, '대기', ?, ?)",
             (
                 s["thread"],
                 s["concept"],
@@ -206,6 +215,7 @@ def build_graph(
                 q["answer"],
                 " / ".join(q["points"]),
                 date.today().isoformat(),
+                "\n".join(s.get("sources", [])),
             ),
         )
         conn.commit()
