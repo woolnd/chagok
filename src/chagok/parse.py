@@ -84,8 +84,8 @@ if __name__ == "__main__":
     assert p["pages"][0]["page"] == 1
     assert p["pages"][0]["heading"] == "1. 퍼셉트론이란", p["pages"][0]["heading"]
 
-    # 논리 게이트 표가 그대로 남아 있는지 (3. 논리 게이트)
-    assert "| x₁ | x₂ | y |" in p["pages"][2]["text"]
+    # 논리 게이트 표가 그대로 남아 있는지 (4. 논리 게이트)
+    assert "| x₁ | x₂ | y |" in p["pages"][3]["text"]
 
     # ### 하위 섹션이 본문에 남아 있는지 (2. 가중치 > ### 크기)
     assert "### 크기" in p["pages"][1]["text"]

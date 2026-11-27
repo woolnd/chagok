@@ -4,22 +4,26 @@
 여러 시각의 Attention 계층을 한꺼번에 처리하도록 묶은 것이 Time Attention 계층이다. 각 시각의 Attention 계층은 같은 hs를 받고, 그 시각의 h만 다르다.
 
 ## 핵심 포인트
-- Attention 계층은 Attention Weight(내적 유사도 s → softmax로 가중치 a)와 Weight Sum(가중치로 hs를 가중합해 맥락 벡터 c 생성) 두 단계로 계산한다.
-- Time Attention 계층은 Decoder의 LSTM 계층과 Affine 계층 사이에 들어가며, 각 시각마다 맥락 벡터 c를 만들고 c와 h를 연결해 Affine 계층에 입력한다.
-- Attention 계층을 LSTM 다음 시각 입력으로 넣는 구성도 가능하지만, Decoder 데이터 흐름이 한 방향이라 LSTM과 Affine 사이에 넣는 구성이 모듈화하기 쉽다.
+- 각 시각의 Attention 계층은 같은 hs를 받고 그 시각의 h만 다르다
+- Attention 계층은 Attention Weight 계층(내적·소프트맥스로 가중치 a 계산)과 Weight Sum 계층(가중합으로 맥락 벡터 c 계산)의 두 단계로 이루어진다
+- 입력 전체를 고정 길이 벡터 하나에 압축하던 seq2seq의 한계를 매 시각 필요한 입력 정보를 새로 꺼내 쓰는 방식으로 해결한다
 
 ## 관련 개념
+- [[Attention 계층]]
+- [[Attention Weight 계층]]
+- [[Weight Sum 계층]]
+- [[seq2seq]]
 - [[어텐션]]
 - [[맥락 벡터]]
-- [[내적]]
-- [[소프트맥스 함수]]
+- [[가중치 a]]
+- [[점수]]
+- [[가중합]]
+- [[Time 계층]]
 - [[Encoder]]
 - [[Decoder]]
-- [[seq2seq]]
-- [[LSTM]]
 - [[은닉 상태]]
-- [[Time 계층]]
+- [[소프트맥스 함수]]
+- [[얼라인먼트]]
 
 ## 출처
 - 2026-11-17_attention.md#어텐션 > 5. Decoder 개선 ③: Attention 계층
-- 2026-11-17_attention.md#어텐션 > 9. Attention 계층 사용 방법
